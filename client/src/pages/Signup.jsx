@@ -1,18 +1,10 @@
-import {
-  Box,
-  TextField,
-  Button,
-  Typography,
-} from "@mui/material";
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
-import AuthLayout from "./AuthLayout";
+// import AuthLayout from "./AuthLayout";
 import API from "../services/Api";
 
 export default function Signup() {
-
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
@@ -33,7 +25,6 @@ export default function Signup() {
     e.preventDefault();
 
     try {
-
       if (form.password !== form.confirm) {
         return alert("Passwords do not match");
       }
@@ -47,93 +38,72 @@ export default function Signup() {
       alert("Signup successful");
 
       navigate("/login");
-
     } catch (error) {
-
       console.log(error);
 
-      alert(
-        error.response?.data?.message || "Signup failed"
-      );
+      alert(error.response?.data?.message || "Signup failed");
     }
   };
 
   return (
-    <AuthLayout>
 
-      <Box
-        sx={{
-          width: "80%",
-          maxWidth: "400px",
-          background: "white",
-          p: 4,
-          borderRadius: 3,
-        }}
-      >
-
-        <Typography
-          variant="h4"
-          fontWeight="bold"
-          mb={3}
-        >
-          Signup
-        </Typography>
+      <div>
+        <h2>Signup</h2>
 
         <form onSubmit={handleSignup}>
+          <div>
+            <label>Full Name</label>
 
-          <TextField
-            fullWidth
-            label="Full Name"
-            name="name"
-            sx={{ mb: 2 }}
-            onChange={handleChange}
-          />
+            <input
+              type="text"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+            />
+          </div>
 
-          <TextField
-            fullWidth
-            label="Email"
-            name="email"
-            sx={{ mb: 2 }}
-            onChange={handleChange}
-          />
+          <div>
+            <label>Email</label>
 
-          <TextField
-            fullWidth
-            label="Password"
-            type="password"
-            name="password"
-            sx={{ mb: 2 }}
-            onChange={handleChange}
-          />
+            <input
+              type="email"
+              name="email"
+              value={form.email}
+              onChange={handleChange}
+            />
+          </div>
 
-          <TextField
-            fullWidth
-            label="Confirm Password"
-            type="password"
-            name="confirm"
-            sx={{ mb: 2 }}
-            onChange={handleChange}
-          />
+          <div>
+            <label>Password</label>
 
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-          >
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+            />
+          </div>
+
+          <div>
+            <label>Confirm Password</label>
+
+            <input
+              type="password"
+              name="confirm"
+              value={form.confirm}
+              onChange={handleChange}
+            />
+          </div>
+
+          <button type="submit">
             Signup
-          </Button>
-
+          </button>
         </form>
 
-        <Typography mt={2}>
-          Already have an account?
-          <Link to="/login">
-            Login
-          </Link>
-        </Typography>
-
-      </Box>
-
-    </AuthLayout>
+        <p>
+          Already have an account? <Link to="/login">Login</Link>
+        </p>
+      </div>
+   
   );
 }

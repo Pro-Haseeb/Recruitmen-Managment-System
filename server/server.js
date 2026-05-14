@@ -14,6 +14,7 @@ import teamRoutes from "./routes/companyadmin/teamRoutes.js";
 
 //....... HR
 import jobRoutes from "./routes/companyadmin/jobRoutes.js";
+import detailJobRoute from "./routes/candidate/detailJobRoute.js";
 dotenv.config();
 connectDB();
 
@@ -40,6 +41,7 @@ app.use("/api/system", companyRoutes);
 // ........ company_admin
 app.use("/api/company", teamRoutes);
 app.use("/api/jobs", jobRoutes);
+app.use("/api/jobs", detailJobRoute);
 
 
 const PORT = process.env.PORT || 5000;

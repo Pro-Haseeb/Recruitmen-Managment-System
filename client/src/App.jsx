@@ -20,6 +20,7 @@ import CreateJob from './pages/companyAdmin/createJob';
 
 //Candidate
 import AllJobs from "./pages/candidate/AllJobs";
+import JobDetails from './pages/candidate/JobsDetail';
 
 const App = () => {
   return (
@@ -45,6 +46,7 @@ const App = () => {
 
 <Route path="/Candidate" element={<AdminLayout />}>
   <Route index element={<AllJobs/>} />
+  <Route path="jobs/:id" element={<JobDetails />} />
 </Route>
     </Routes>
     

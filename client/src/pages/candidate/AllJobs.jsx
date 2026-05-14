@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { getAllJobs } from "../../services/CandidateApi";
+import { useNavigate } from "react-router-dom";
 
 const Jobs = () => {
 
   const [jobs, setJobs] = useState([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchJobs();
@@ -36,7 +38,11 @@ const Jobs = () => {
 
           <p>Company: {job.company?.name}</p>
 
-          <button>Apply</button>
+          <button
+            onClick={() => navigate(`jobs/${job._id}`)}
+          >
+            Apply
+          </button>
 
         </div>
       ))}
