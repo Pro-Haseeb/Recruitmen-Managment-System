@@ -3,21 +3,25 @@ import {
   List,
   ListItemButton,
   ListItemText,
+  ListItemIcon,
   Box,
   Typography
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import BusinessIcon from "@mui/icons-material/Business";
+import RequestQuoteIcon from "@mui/icons-material/RequestQuote";
+import PeopleIcon from "@mui/icons-material/People";
+import BarChartIcon from "@mui/icons-material/BarChart";
+import SettingsIcon from "@mui/icons-material/Settings";
 
 const menu = [
-  { name: "Dashboard", path: "/admin" },
-  { name: "Jobs", path: "/admin/jobs" },
-  { name: "Candidates", path: "/admin/candidates" },
-  { name: "HR Team", path: "/admin/hr-team" },
-  { name: "Interviews", path: "/admin/interviews" },
-  { name: "Companies", path: "/admin/companies" },
-  { name: "Analytics", path: "/admin/analytics" },
-  { name: "Demo Requests", path: "/admin/demo" },
-  { name: "Settings", path: "/admin/settings" }
+  { name: "Dashboard", path: "/admin", icon: <DashboardIcon /> },
+  { name: "Companies", path: "/admin/companies", icon: <BusinessIcon /> },
+  { name: "Demo Requests", path: "/admin/demo", icon: <RequestQuoteIcon /> },
+  { name: "Users", path: "/admin/users", icon: <PeopleIcon /> },
+  { name: "Analytics", path: "/admin/analytics", icon: <BarChartIcon /> },
+  { name: "Settings", path: "/admin/settings", icon: <SettingsIcon /> }
 ];
 
 export default function Sidebar({ open, onClose }) {
@@ -45,8 +49,11 @@ export default function Sidebar({ open, onClose }) {
           color: "#fff",
           borderRight: "1px solid rgba(255,255,255,0.08)",
           backdropFilter: "blur(18px)",
-          overflow: "hidden",
-          position: "relative",
+          overflowX: "hidden",
+          overflowY: "auto",
+          position: "fixed",
+          height: "100vh",
+          zIndex: 1200,
 
           // 🔥 GLOW EFFECT
           "&::before": {
@@ -71,7 +78,35 @@ export default function Sidebar({ open, onClose }) {
             borderRadius: "50%",
             background: "rgba(25,118,210,0.16)",
             filter: "blur(90px)"
-          }
+          },
+
+          // ✨ CUSTOM SCROLLBAR
+          "&::-webkit-scrollbar": {
+            width: "4px",
+          },
+          "&::-webkit-scrollbar-track": {
+            background: "transparent",
+            margin: "8px 0",
+          },
+          "&::-webkit-scrollbar-thumb": {
+            background: "rgba(59,130,246,0.0)",
+            borderRadius: "20px",
+            transition: "background 0.4s ease",
+          },
+          "&:hover::-webkit-scrollbar-thumb": {
+            background: "linear-gradient(180deg, rgba(59,130,246,0.5), rgba(96,165,250,0.3))",
+          },
+          "&::-webkit-scrollbar-thumb:hover": {
+            background: "linear-gradient(180deg, rgba(59,130,246,0.8), rgba(96,165,250,0.6))",
+            boxShadow: "0 0 8px rgba(59,130,246,0.4)",
+          },
+          "&::-webkit-scrollbar-thumb:active": {
+            background: "linear-gradient(180deg, #3b82f6, #60a5fa)",
+            boxShadow: "0 0 12px rgba(59,130,246,0.6)",
+          },
+          // Firefox
+          scrollbarWidth: "thin",
+          scrollbarColor: "rgba(59,130,246,0.3) transparent",
         }
       }}
     >
@@ -207,6 +242,19 @@ export default function Sidebar({ open, onClose }) {
                   : {}
               }}
             >
+              <ListItemIcon
+                sx={{
+                  color: active ? "#90caf9" : "#cbd5e1",
+                  minWidth: "40px",
+                  display: "flex",
+                  alignItems: "center",
+                  "& svg": {
+                    fontSize: "20px"
+                  }
+                }}
+              >
+                {item.icon}
+              </ListItemIcon>
               <ListItemText
                 primary={item.name}
                 primaryTypographyProps={{

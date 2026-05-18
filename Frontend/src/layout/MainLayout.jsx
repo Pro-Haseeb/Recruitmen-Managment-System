@@ -1,26 +1,48 @@
-import { useState } from "react";
 import { Box, Toolbar } from "@mui/material";
 import Sidebar from "./Sidebar";
 import Navbar from "./Navbar";
 import { Outlet } from "react-router-dom";
 
+const SIDEBAR_WIDTH = 240;
+
 export default function MainLayout() {
-  const [open, setOpen] = useState(false);
-
   return (
-    <Box sx={{ display: "flex" }}>
-      
-      {/* SIDEBAR (TEMPORARY NOW) */}
-      <Sidebar open={open} onClose={() => setOpen(false)} />
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #020617 0%, #0a0f1e 50%, #020617 100%)",
+      }}
+    >
+      {/* FIXED SIDEBAR */}
+      <Sidebar />
 
-      <Box sx={{ flex: 1 }}>
+      {/* MAIN CONTENT AREA */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          ml: `${SIDEBAR_WIDTH}px`,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: "100vh",
+          minWidth: 0, // prevent flex overflow
+        }}
+      >
+        {/* NAVBAR */}
         <Navbar hasSidebar />
-        <Toolbar />
+        <Toolbar sx={{ flexShrink: 0 }} />
 
-        <Box sx={{ p: 3 }}>
+        {/* PAGE CONTENT */}
+        <Box
+          sx={{
+            flexGrow: 1,
+            px: { xs: 2, sm: 3, md: 4 },
+            py: 3,
+            overflowX: "hidden",
+          }}
+        >
           <Outlet />
         </Box>
-
       </Box>
     </Box>
   );

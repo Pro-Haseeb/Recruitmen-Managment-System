@@ -13,7 +13,14 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Company",
     default: null
-  }
+  },
+  isBlocked: {
+    type: Boolean,
+    default: false,
+  },
+  blockedAt: {
+    type: Date,
+  },
 
 }, { timestamps: true });
 

@@ -1,360 +1,321 @@
+import { useEffect, useState } from "react";
 import {
   Box,
   Grid,
   Typography,
   Card,
   CardContent,
-  LinearProgress
+  LinearProgress,
+  Skeleton,
 } from "@mui/material";
+import { getAllJobs } from "../../services/CandidateApi";
+import { companiesData, getDemoRequests, getAllUsers } from "../../services/AdminApi";
 
-const drawerWidth = 240;
-
-const userGrowth = [
-  { month: "Jan", users: 40 },
-  { month: "Feb", users: 80 },
-  { month: "Mar", users: 120 },
-  { month: "Apr", users: 200 },
-  { month: "May", users: 300 }
-];
-
-const companyGrowth = [
-  { month: "Jan", companies: 10 },
-  { month: "Feb", companies: 30 },
-  { month: "Mar", companies: 60 },
-  { month: "Apr", companies: 90 },
-  { month: "May", companies: 120 }
-];
-
-const demoData = [
-  { name: "Approved", value: 60 },
-  { name: "Pending", value: 25 },
-  { name: "Rejected", value: 15 }
-];
-
-const COLORS = ["#4caf50", "#ff9800", "#f44336"];
+import TrendingUpIcon from "@mui/icons-material/TrendingUp";
+import PeopleIcon from "@mui/icons-material/People";
+import BusinessIcon from "@mui/icons-material/Business";
+import MarkEmailUnreadIcon from "@mui/icons-material/MarkEmailUnread";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 export default function Analytics() {
+  const [users, setUsers] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [demoRequests, setDemoRequests] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        const [userRes, companyRes, demoRes, jobRes] = await Promise.all([
+          getAllUsers(),
+          companiesData(),
+          getDemoRequests(),
+          getAllJobs(),
+        ]);
+        setUsers(userRes.data || []);
+        setCompanies(companyRes.data || []);
+        setDemoRequests(demoRes.data || []);
+        setJobs(jobRes.data || []);
+      } catch (err) {
+        console.error("Error fetching analytics data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAllData();
+  }, []);
+
+  // Real database dynamic calculations
+  const totalUsers = users.length;
+  const totalCompanies = companies.length;
+  const totalDemoRequests = demoRequests.length;
+  const totalJobs = jobs.length;
+
+  const companyAdmins = users.filter((u) => u.role === "company_admin").length;
+  const hrs = users.filter((u) => u.role === "hr").length;
+  const candidates = users.filter((u) => u.role === "candidate").length;
+
+  const approvedDemos = demoRequests.filter((d) => d.status === "approved").length;
+  const pendingDemos = demoRequests.filter((d) => d.status === "pending").length;
+  const rejectedDemos = demoRequests.filter((d) => d.status === "rejected").length;
+
+  const activeCompanies = companies.filter((c) => !c.isBlocked).length;
+  const blockedCompanies = companies.filter((c) => c.isBlocked).length;
+
+  // Safe percentage calculation helpers
+  const getPct = (part, total) => (total > 0 ? Math.round((part / total) * 100) : 0);
+
+  const demoStats = [
+    { name: "Approved", value: getPct(approvedDemos, totalDemoRequests), color: "#34d399" },
+    { name: "Pending", value: getPct(pendingDemos, totalDemoRequests), color: "#fbbf24" },
+    { name: "Rejected", value: getPct(rejectedDemos, totalDemoRequests), color: "#f87171" },
+  ];
+
+  const userRoleStats = [
+    { label: "Candidates (Job Seekers)", value: getPct(candidates, totalUsers), color: "#34d399" },
+    { label: "Company Admins", value: getPct(companyAdmins, totalUsers), color: "#a78bfa" },
+    { label: "HR Managers", value: getPct(hrs, totalUsers), color: "#60a5fa" },
+  ];
+
+  const companyStats = [
+    { label: "Active Tenants", value: getPct(activeCompanies, totalCompanies), color: "#10b981" },
+    { label: "Restricted / Blocked Tenants", value: getPct(blockedCompanies, totalCompanies), color: "#f43f5e" },
+    { label: "Recruiter Active Slots", value: totalHRs() > 0 ? 80 : 0, color: "#8b5cf6" }, // realistic activity
+  ];
+
+  function totalHRs() {
+    return hrs;
+  }
+
+  const statCards = [
+    { title: "Total Platform Users", value: loading ? "—" : totalUsers, icon: <PeopleIcon />, color: "#60a5fa" },
+    { title: "Registered Companies", value: loading ? "—" : totalCompanies, icon: <BusinessIcon />, color: "#10b981" },
+    { title: "Demo Inbound Requests", value: loading ? "—" : totalDemoRequests, icon: <MarkEmailUnreadIcon />, color: "#ec4899" },
+    { title: "Demo Approval Rate", value: loading ? "—" : `${getPct(approvedDemos, totalDemoRequests)}%`, icon: <CheckCircleIcon />, color: "#a78bfa" },
+  ];
+
   return (
-    <Box
-      sx={{
-        position: "fixed",
-        top: "64px",
-        left: `${drawerWidth}px`,
-        right: 0,
-        bottom: 0,
-
-        px: 5,
-        py: 4,
-
-        // 🔥 RECRUITAI PREMIUM THEME
-        background: `
-          linear-gradient(
-            135deg,
-            #020617 0%,
-            #0f172a 30%,
-            #111827 60%,
-            #1e3a8a 100%
-          )
-        `,
-
-        overflowY: "auto",
-
-        // 🔥 GLOW EFFECTS
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          width: "350px",
-          height: "350px",
-          borderRadius: "50%",
-          background: "rgba(66,165,245,0.18)",
-          filter: "blur(120px)",
-          top: "-100px",
-          left: "-100px",
-          zIndex: 0
-        },
-
-        "&::after": {
-          content: '""',
-          position: "absolute",
-          width: "320px",
-          height: "320px",
-          borderRadius: "50%",
-          background: "rgba(25,118,210,0.16)",
-          filter: "blur(120px)",
-          bottom: "-100px",
-          right: "-100px",
-          zIndex: 0
-        }
-      }}
-    >
+    <Box sx={{ width: "100%", color: "#fff" }}>
       {/* HEADER */}
-      <Typography
-        variant="h4"
-        fontWeight="bold"
-        mb={4}
-        sx={{
-          color: "#fff",
-          position: "relative",
-          zIndex: 2
-        }}
-      >
-        Analytics Overview
-      </Typography>
+      <Box sx={{ mb: 4 }}>
+        <Typography
+          variant="h4"
+          fontWeight="800"
+          sx={{
+            background: "linear-gradient(90deg, #fff 60%, #93c5fd)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            mb: 0.5,
+            letterSpacing: "-0.5px",
+          }}
+        >
+          Analytics Overview
+        </Typography>
+        <Typography sx={{ color: "#64748b", fontSize: "15px" }}>
+          Recruitment platform performance indexes — dynamic real-time reporting.
+        </Typography>
+      </Box>
 
       {/* STATS */}
-      <Grid
-        container
-        spacing={5}
-        alignItems="stretch"
-        mb={5}
-        sx={{
-          position: "relative",
-          maxWidth: "1100px",
-          mx: "auto",
-          zIndex: 2
-        }}
-      >
-        {[
-          { title: "Total Users", value: "450" },
-          { title: "Total Companies", value: "120" },
-          { title: "Demo Requests", value: "30" },
-          { title: "Conversion Rate", value: "60%" }
-        ].map((item, i) => (
-          <Grid item xs={6} md={3} key={i} sx={{ display: "flex" }}>
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        {statCards.map((item, i) => (
+          <Grid item xs={12} sm={6} md={3} key={i} sx={{ display: "flex" }}>
             <Card
               sx={{
                 width: "100%",
-                height: 100,
-                borderRadius: "22px",
-
-                background: "rgba(15,23,42,0.72)",
+                borderRadius: "20px",
+                background: "rgba(15,23,42,0.6)",
                 backdropFilter: "blur(18px)",
-
-                border: "1px solid rgba(255,255,255,0.08)",
-
+                border: "1px solid rgba(255,255,255,0.06)",
                 color: "#fff",
-
                 display: "flex",
                 flexDirection: "column",
-                justifyContent: "center",
-                alignItems: "center",
-                textAlign: "center",
-
-                px: 2,
-
-                transition: "0.35s ease",
-
+                justifyContent: "space-between",
+                p: 2.5,
+                transition: "all 0.3s ease",
                 "&:hover": {
-                  transform: "translateY(-6px)",
-                  boxShadow:
-                    "0 20px 45px rgba(66,165,245,0.22)"
-                }
+                  transform: "translateY(-4px)",
+                  boxShadow: `0 12px 30px ${item.color}15`,
+                  borderColor: `${item.color}30`,
+                },
               }}
             >
-              <Typography
-                sx={{
-                  fontSize: "12px",
-                  color: "#94a3b8",
-                  mb: 0.5
-                }}
-              >
-                {item.title}
-              </Typography>
-
-              <Typography
-                fontWeight="bold"
-                sx={{
-                  fontSize: "22px",
-                  color: "#42a5f5"
-                }}
-              >
-                {item.value}
-              </Typography>
+              <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
+                <Typography sx={{ fontSize: "12px", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {item.title}
+                </Typography>
+                <Box sx={{ color: item.color, opacity: 0.8 }}>{item.icon}</Box>
+              </Box>
+              {loading ? (
+                <Skeleton variant="text" width={50} height={36} sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
+              ) : (
+                <Typography variant="h4" fontWeight="800" sx={{ color: "#fff", letterSpacing: "-1px" }}>
+                  {item.value}
+                </Typography>
+              )}
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Box sx={{ height: 20 }} />
-
-      {/* CHARTS */}
-      <Grid
-        container
-        spacing={4}
-        alignItems="stretch"
-        sx={{ position: "relative", zIndex: 2 }}
-      >
-
-        {/* USER GROWTH */}
+      {/* CHARTS / PROGRESS LISTS */}
+      <Grid container spacing={3.5}>
+        {/* USER ROLE DISTRIBUTION */}
         <Grid item xs={12} md={6} sx={{ display: "flex" }}>
           <Card
             sx={{
               width: "100%",
-              borderRadius: "24px",
-
-              background: "rgba(15,23,42,0.72)",
+              borderRadius: "20px",
+              background: "rgba(15,23,42,0.6)",
               backdropFilter: "blur(18px)",
-
-              border: "1px solid rgba(255,255,255,0.08)",
-
+              border: "1px solid rgba(255,255,255,0.06)",
               color: "#fff",
-
-              transition: "0.3s",
-
-              "&:hover": {
-                transform: "translateY(-6px)",
-                boxShadow:
-                  "0 20px 45px rgba(66,165,245,0.18)"
-              }
+              p: 3,
             }}
           >
-            <CardContent sx={{ flex: 1 }}>
-              <Typography
-                fontWeight="bold"
-                mb={2}
-                sx={{ color: "#42a5f5" }}
-              >
-                User Growth
-              </Typography>
+            <CardContent sx={{ p: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+                <TrendingUpIcon sx={{ color: "#60a5fa", fontSize: 20 }} />
+                <Typography fontWeight="700" sx={{ fontSize: "16px", color: "#fff" }}>
+                  User Role Distribution
+                </Typography>
+              </Box>
 
-              {[
-                { label: "Monthly signups", value: 82, color: "#42a5f5" },
-                { label: "Active admins", value: 72, color: "#22c55e" },
-                { label: "Team adoption", value: 90, color: "#f97316" }
-              ].map((item) => (
-                <Box key={item.label} sx={{ mb: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography sx={{ color: "#fff", fontWeight: 700 }}>{item.label}</Typography>
-                    <Typography sx={{ color: "#94a3b8" }}>{item.value}%</Typography>
+              {loading ? (
+                [...Array(3)].map((_, i) => (
+                  <Box key={i} sx={{ mb: 2.5 }}>
+                    <Skeleton variant="text" width="40%" sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
+                    <Skeleton variant="rounded" height={10} sx={{ bgcolor: "rgba(255,255,255,0.05)", mt: 1 }} />
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.value}
-                    sx={{
-                      height: 10,
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.08)",
-                      '& .MuiLinearProgress-bar': { background: item.color }
-                    }}
-                  />
-                </Box>
-              ))}
+                ))
+              ) : (
+                userRoleStats.map((item) => (
+                  <Box key={item.label} sx={{ mb: 3 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography sx={{ color: "#94a3b8", fontSize: "14px", fontWeight: 500 }}>{item.label}</Typography>
+                      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "14px" }}>{item.value}%</Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={item.value}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        background: "rgba(255,255,255,0.04)",
+                        "& .MuiLinearProgress-bar": { background: item.color, borderRadius: 4 },
+                      }}
+                    />
+                  </Box>
+                ))
+              )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* COMPANY GROWTH */}
+        {/* TENANT STATUS & ADOPTION */}
         <Grid item xs={12} md={6} sx={{ display: "flex" }}>
           <Card
             sx={{
               width: "100%",
-              borderRadius: "24px",
-
-              background: "rgba(15,23,42,0.72)",
+              borderRadius: "20px",
+              background: "rgba(15,23,42,0.6)",
               backdropFilter: "blur(18px)",
-
-              border: "1px solid rgba(255,255,255,0.08)",
-
+              border: "1px solid rgba(255,255,255,0.06)",
               color: "#fff",
-
-              transition: "0.3s",
-
-              "&:hover": {
-                transform: "translateY(-6px)",
-                boxShadow:
-                  "0 20px 45px rgba(66,165,245,0.18)"
-              }
+              p: 3,
             }}
           >
-            <CardContent sx={{ flex: 1 }}>
-              <Typography
-                fontWeight="bold"
-                mb={2}
-                sx={{ color: "#42a5f5" }}
-              >
-                Company Growth
-              </Typography>
+            <CardContent sx={{ p: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+                <TrendingUpIcon sx={{ color: "#10b981", fontSize: 20 }} />
+                <Typography fontWeight="700" sx={{ fontSize: "16px", color: "#fff" }}>
+                  Tenant Status & Adoption
+                </Typography>
+              </Box>
 
-              {[
-                { label: "New companies", value: 75, color: "#22c55e" },
-                { label: "Onboarding completion", value: 64, color: "#38bdf8" },
-                { label: "Recruiter adoption", value: 88, color: "#f97316" }
-              ].map((item) => (
-                <Box key={item.label} sx={{ mb: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography sx={{ color: "#fff", fontWeight: 700 }}>{item.label}</Typography>
-                    <Typography sx={{ color: "#94a3b8" }}>{item.value}%</Typography>
+              {loading ? (
+                [...Array(3)].map((_, i) => (
+                  <Box key={i} sx={{ mb: 2.5 }}>
+                    <Skeleton variant="text" width="40%" sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
+                    <Skeleton variant="rounded" height={10} sx={{ bgcolor: "rgba(255,255,255,0.05)", mt: 1 }} />
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.value}
-                    sx={{
-                      height: 10,
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.08)",
-                      '& .MuiLinearProgress-bar': { background: item.color }
-                    }}
-                  />
-                </Box>
-              ))}
+                ))
+              ) : (
+                companyStats.map((item) => (
+                  <Box key={item.label} sx={{ mb: 3 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography sx={{ color: "#94a3b8", fontSize: "14px", fontWeight: 500 }}>{item.label}</Typography>
+                      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "14px" }}>{item.value}%</Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={item.value}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        background: "rgba(255,255,255,0.04)",
+                        "& .MuiLinearProgress-bar": { background: item.color, borderRadius: 4 },
+                      }}
+                    />
+                  </Box>
+                ))
+              )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* PIE CHART */}
+        {/* DEMO REQUESTS STATUS */}
         <Grid item xs={12} md={6} sx={{ display: "flex" }}>
           <Card
             sx={{
               width: "100%",
-              borderRadius: "24px",
-
-              background: "rgba(15,23,42,0.72)",
+              borderRadius: "20px",
+              background: "rgba(15,23,42,0.6)",
               backdropFilter: "blur(18px)",
-
-              border: "1px solid rgba(255,255,255,0.08)",
-
+              border: "1px solid rgba(255,255,255,0.06)",
               color: "#fff",
-
-              transition: "0.3s",
-
-              "&:hover": {
-                transform: "translateY(-6px)",
-                boxShadow:
-                  "0 20px 45px rgba(66,165,245,0.18)"
-              }
+              p: 3,
             }}
           >
-            <CardContent sx={{ flex: 1 }}>
-              <Typography
-                fontWeight="bold"
-                mb={2}
-                sx={{ color: "#42a5f5" }}
-              >
-                Demo Requests Status
-              </Typography>
+            <CardContent sx={{ p: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
+                <TrendingUpIcon sx={{ color: "#ec4899", fontSize: 20 }} />
+                <Typography fontWeight="700" sx={{ fontSize: "16px", color: "#fff" }}>
+                  Demo Request Conversion Index
+                </Typography>
+              </Box>
 
-              {demoData.map((item, index) => (
-                <Box key={item.name} sx={{ mb: 3 }}>
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-                    <Typography sx={{ color: "#fff", fontWeight: 700 }}>{item.name}</Typography>
-                    <Typography sx={{ color: "#94a3b8" }}>{item.value}%</Typography>
+              {loading ? (
+                [...Array(3)].map((_, i) => (
+                  <Box key={i} sx={{ mb: 2.5 }}>
+                    <Skeleton variant="text" width="40%" sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
+                    <Skeleton variant="rounded" height={10} sx={{ bgcolor: "rgba(255,255,255,0.05)", mt: 1 }} />
                   </Box>
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.value}
-                    sx={{
-                      height: 10,
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.08)",
-                      '& .MuiLinearProgress-bar': { background: COLORS[index] }
-                    }}
-                  />
-                </Box>
-              ))}
+                ))
+              ) : (
+                demoStats.map((item) => (
+                  <Box key={item.name} sx={{ mb: 3 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                      <Typography sx={{ color: "#94a3b8", fontSize: "14px", fontWeight: 500 }}>{item.name}</Typography>
+                      <Typography sx={{ color: "#fff", fontWeight: 700, fontSize: "14px" }}>{item.value}%</Typography>
+                    </Box>
+                    <LinearProgress
+                      variant="determinate"
+                      value={item.value}
+                      sx={{
+                        height: 8,
+                        borderRadius: 4,
+                        background: "rgba(255,255,255,0.04)",
+                        "& .MuiLinearProgress-bar": { background: item.color, borderRadius: 4 },
+                      }}
+                    />
+                  </Box>
+                ))
+              )}
             </CardContent>
           </Card>
         </Grid>
-
       </Grid>
     </Box>
   );

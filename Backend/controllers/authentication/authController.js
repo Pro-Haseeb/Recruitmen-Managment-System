@@ -2,7 +2,7 @@ import User from "../../models/User.js";
 import bcrypt from "bcryptjs";
 import generateToken from "../../utils/generateToken.js";
 
- export const signup = async (req, res) => {
+export const signup = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
@@ -45,13 +45,19 @@ export const login = async (req, res) => {
     if (!user) {
       return res.status(400).json({ message: "Invalid credentials" });
     }
-   
-    
+
+
     // compare password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid credentials" });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        message: "Your account has been blocked by admin",
+      });
     }
 
     res.json({

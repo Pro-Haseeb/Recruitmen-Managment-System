@@ -8,6 +8,7 @@ import authRoutes from "./routes/authentication/authRoutes.js";
 //....... systemadmin
 import systemRoutes from "./routes/systemadmin/systemRoutes.js";
 import companyRoutes from "./routes/systemadmin/companyRoutes.js";
+import userRoutes from "./routes/systemadmin/userRoutes.js";
 
 //....... company_admin
 import teamRoutes from "./routes/companyadmin/teamRoutes.js";
@@ -15,6 +16,9 @@ import teamRoutes from "./routes/companyadmin/teamRoutes.js";
 //....... HR
 import jobRoutes from "./routes/companyadmin/jobRoutes.js";
 import detailJobRoute from "./routes/candidate/detailJobRoute.js";
+
+//......... candidate
+import applicationRoutes from "./routes/candidate/applicationRoute.js";
 dotenv.config();
 connectDB();
 
@@ -28,7 +32,7 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("API running...");
 });
-
+app.use("/uploads", express.static("uploads"));
 // routes
 
 // ........ authorization
@@ -37,12 +41,15 @@ app.use("/api/auth", authRoutes);
 // ........ system admin
 app.use("/api/system", systemRoutes);
 app.use("/api/system", companyRoutes);
+app.use("/api/system/users", userRoutes);
 
 // ........ company_admin
 app.use("/api/company", teamRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/jobs", detailJobRoute);
 
+//........ candidate
+app.use("/api/application", applicationRoutes)
 
 const PORT = process.env.PORT || 5000;
 
