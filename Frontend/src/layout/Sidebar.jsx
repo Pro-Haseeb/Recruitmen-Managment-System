@@ -5,7 +5,8 @@ import {
   ListItemText,
   ListItemIcon,
   Box,
-  Typography
+  Typography,
+  IconButton
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardIcon from "@mui/icons-material/Dashboard";
@@ -14,6 +15,7 @@ import RequestQuoteIcon from "@mui/icons-material/RequestQuote";
 import PeopleIcon from "@mui/icons-material/People";
 import BarChartIcon from "@mui/icons-material/BarChart";
 import SettingsIcon from "@mui/icons-material/Settings";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 const menu = [
   { name: "Dashboard", path: "/admin", icon: <DashboardIcon /> },
@@ -21,7 +23,8 @@ const menu = [
   { name: "Demo Requests", path: "/admin/demo", icon: <RequestQuoteIcon /> },
   { name: "Users", path: "/admin/users", icon: <PeopleIcon /> },
   { name: "Analytics", path: "/admin/analytics", icon: <BarChartIcon /> },
-  { name: "Settings", path: "/admin/settings", icon: <SettingsIcon /> }
+  { name: "Settings", path: "/admin/settings", icon: <SettingsIcon /> },
+  { name: "Back to Home", path: "/", icon: <ArrowBackIcon /> }
 ];
 
 export default function Sidebar({ open, onClose }) {
@@ -120,6 +123,24 @@ export default function Sidebar({ open, onClose }) {
           borderBottom: "1px solid rgba(255,255,255,0.06)"
         }}
       >
+        {/* BACK TO HOME BUTTON */}
+        <IconButton
+          onClick={() => navigate("/")}
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            color: "rgba(255,255,255,0.4)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              color: "#60a5fa",
+              background: "rgba(96,165,250,0.08)",
+              transform: "translateX(-2px)"
+            }
+          }}
+        >
+          <ArrowBackIcon sx={{ fontSize: 18 }} />
+        </IconButton>
         {/* LOGO */}
         <Box
           sx={{

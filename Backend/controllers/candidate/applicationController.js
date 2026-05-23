@@ -1,5 +1,6 @@
 import Application from "../../models/Application.js";
 import Job from "../../models/Job.js";
+import { extractResumeText } from "../../utils/extractResumeText.js";
 
 export const applyJob = async (
     req,
@@ -13,6 +14,8 @@ export const applyJob = async (
         const { jobId } = req.body;
 
         const job = await Job.findById(jobId);
+
+        const resumeText = await extractResumeText(req.file);
 
         if (!job) {
             return res.status(404).json({
@@ -47,6 +50,8 @@ export const applyJob = async (
                 candidateEmail: candidate.email,
 
                 resume: req.file?.path,
+
+                resumetxt : resumeText
 
             });
 

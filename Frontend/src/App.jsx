@@ -38,7 +38,7 @@ import CandidateDashboard from './pages/candidate/Dashboard';
 import AppliedJobs from './pages/candidate/AppliedJobs';
 import CandidateProfile from './pages/candidate/Profile';
 import CandidateNotifications from './pages/candidate/Notifications';
-import JobDetails from './pages/candidate/JobsDetail';
+import JobDetails from './pages/candidate/JobsDetails';
 
 const App = () => {
   return (
@@ -77,8 +77,9 @@ const App = () => {
           <Route path="applied" element={<AppliedJobs />} />
           <Route path="profile" element={<CandidateProfile />} />
           <Route path="notifications" element={<CandidateNotifications />} />
-          <Route path="jobs/:id" element={<JobDetails />} />
         </Route>
+        {/* Standalone Job Details Page (No Sidebar Layout) */}
+        <Route path="/candidate/jobs/:id" element={<JobDetails />} />
       </Route>
 
       {/* Admin Routes */}

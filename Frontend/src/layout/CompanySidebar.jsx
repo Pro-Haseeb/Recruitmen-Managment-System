@@ -4,9 +4,11 @@ import {
   ListItemButton,
   ListItemText,
   Box,
-  Typography
+  Typography,
+  IconButton
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export default function CompanySidebar({ open, onClose }) {
   const navigate = useNavigate();
@@ -37,6 +39,8 @@ export default function CompanySidebar({ open, onClose }) {
     menu.push({ name: "Team Management", path: "/company/team" });
     menu.push({ name: "Settings", path: "/company/settings" });
   }
+
+  menu.push({ name: "Back to Home", path: "/" });
 
   return (
     <Drawer
@@ -97,6 +101,24 @@ export default function CompanySidebar({ open, onClose }) {
           borderBottom: "1px solid rgba(255,255,255,0.06)"
         }}
       >
+        {/* BACK TO HOME BUTTON */}
+        <IconButton
+          onClick={() => navigate("/")}
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            color: "rgba(255,255,255,0.4)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              color: "#60a5fa",
+              background: "rgba(96,165,250,0.08)",
+              transform: "translateX(-2px)"
+            }
+          }}
+        >
+          <ArrowBackIcon sx={{ fontSize: 18 }} />
+        </IconButton>
         <Box
           sx={{
             width: 70,

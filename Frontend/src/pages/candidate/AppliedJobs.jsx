@@ -46,6 +46,10 @@ export default function AppliedJobs() {
   const [page, setPage] = useState(0);
   const [selectedJob, setSelectedJob] = useState(null);
 
+  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const candidateId = user._id || user.email || "guest";
+  const storageKey = `appliedJobs_${candidateId}`;
+
   useEffect(() => {
     const fetchAppliedJobs = async () => {
       try {
@@ -53,8 +57,12 @@ export default function AppliedJobs() {
         const res = await getAllJobs();
         const allJobs = Array.isArray(res.data) ? res.data : [];
 
+        // Filter to only show jobs applied to by this specific candidate
+        const appliedList = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        const userAppliedJobs = allJobs.filter(job => appliedList.includes(job._id));
+
         // Realistic seed data mapping from real DB jobs list
-        const mapped = allJobs.map((job, index) => {
+        const mapped = userAppliedJobs.map((job, index) => {
           const statuses = ["Applied", "Shortlisted", "Under Review", "Rejected"];
           const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
           // Use index to consistently determine status
@@ -80,7 +88,7 @@ export default function AppliedJobs() {
       }
     };
     fetchAppliedJobs();
-  }, []);
+  }, [storageKey]);
 
   const totalPages = Math.ceil(appliedJobs.length / PER_PAGE);
   const paginated = appliedJobs.slice(page * PER_PAGE, (page + 1) * PER_PAGE);

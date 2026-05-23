@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -137,6 +137,21 @@ export default function Navbar({ hasSidebar = false, sidebarWidth = drawerWidth 
     boxShadow: "0 12px 26px rgba(37,99,235,0.28)"
   };
 
+  // Get active dashboard title
+  let dashboardTitle = "";
+  if (hasSidebar) {
+    if (isSystemAdmin) {
+      dashboardTitle = "Admin Dashboard";
+    } else if (isCompanyAdmin) {
+      const compName = user?.company?.name || user?.company || "Company";
+      dashboardTitle = `${compName} Dashboard`;
+    } else if (isCandidate) {
+      dashboardTitle = "Candidate Dashboard";
+    } else {
+      dashboardTitle = "Dashboard";
+    }
+  }
+
   return (
     <>
       <AppBar
@@ -153,137 +168,247 @@ export default function Navbar({ hasSidebar = false, sidebarWidth = drawerWidth 
         }}
       >
         <Toolbar sx={{ minHeight: 78, px: { xs: 2, md: 4 }, gap: 2, display: "flex", justifyContent: "space-between" }}>
-          <Box
-            sx={{ display: "flex", alignItems: "center", gap: 2, cursor: "pointer", minWidth: 0 }}
-            onClick={() => navigate("/")}
-          >
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                borderRadius: "16px",
-                background: "linear-gradient(135deg,#1d4ed8,#60a5fa)",
-                display: "grid",
-                placeItems: "center",
-                boxShadow: "0 16px 35px rgba(37,99,235,0.22)"
-              }}
-            >
-              <Typography variant="h6" sx={{ color: "#fff", fontWeight: 900, lineHeight: 1 }}>
-                AI
-              </Typography>
-            </Box>
+          {hasSidebar ? (
+            <>
+              {/* Left spacer to perfectly center the title against the right side content */}
+              <Box sx={{ width: { xs: 40, md: 180 } }} />
 
-            <Box sx={{ minWidth: 0 }}>
+              {/* CENTERED DASHBOARD TITLE */}
               <Typography
                 variant="h6"
                 fontWeight={900}
                 sx={{
-                  background: brandGradient,
+                  background: "linear-gradient(135deg, #ffffff 0%, #93c5fd 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
-                  letterSpacing: "0.6px"
+                  letterSpacing: "1.5px",
+                  fontSize: { xs: "1rem", md: "1.3rem" },
+                  textAlign: "center",
+                  textTransform: "uppercase"
                 }}
               >
-                RecruitAI RMS
+                {dashboardTitle}
               </Typography>
-              <Typography sx={{ color: "#94a3b8", fontSize: 12, letterSpacing: "0.3px" }}>
-                Recruitment Management System
-              </Typography>
-            </Box>
-          </Box>
 
-          {!isSystemAdmin && (
-            <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 1.5, flex: 1, justifyContent: "center" }}>
-              {navLinks.map((link) => (
-                <Button
-                  key={link.label}
-                  onClick={() => handleNavigate(link.path)}
+              {/* RIGHT ACTIONS */}
+              <Box sx={{ width: { xs: "auto", md: 180 }, display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 1 }}>
+                {isMobile ? (
+                  <IconButton onClick={(event) => setMobileAnchor(event.currentTarget)} sx={{ color: "#cbd5e1" }}>
+                    <MenuIcon />
+                  </IconButton>
+                ) : (
+                  <>
+                    {isCandidate && (
+                      <Button
+                        onClick={(event) => setProfileAnchor(event.currentTarget)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          color: "#fff",
+                          textTransform: "none",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          background: "rgba(255,255,255,0.04)",
+                          px: 2,
+                          py: 1,
+                          borderRadius: "14px"
+                        }}
+                      >
+                        <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
+                        <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
+                        <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                      </Button>
+                    )}
+
+                    {isCompanyAdmin && (
+                      <>
+                        <IconButton sx={{ color: "#cbd5e1", py: 1, px: 1.2, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(148,163,184,0.16)" }}>
+                          <Badge badgeContent={5} color="error">
+                            <NotificationsIcon />
+                          </Badge>
+                        </IconButton>
+                        <Button
+                          onClick={(event) => setProfileAnchor(event.currentTarget)}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "#fff",
+                            textTransform: "none",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(255,255,255,0.04)",
+                            px: 2,
+                            py: 1,
+                            borderRadius: "14px"
+                          }}
+                        >
+                          <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
+                          <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
+                          <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                        </Button>
+                      </>
+                    )}
+
+                    {isSystemAdmin && (
+                      <Button
+                        onClick={(event) => setProfileAnchor(event.currentTarget)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          color: "#fff",
+                          textTransform: "none",
+                          border: "1px solid rgba(255,255,255,0.12)",
+                          background: "rgba(255,255,255,0.04)",
+                          px: 2,
+                          py: 1,
+                          borderRadius: "14px"
+                        }}
+                      >
+                        <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
+                        <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
+                        <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                      </Button>
+                    )}
+                  </>
+                )}
+              </Box>
+            </>
+          ) : (
+            <>
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 2, cursor: "pointer", minWidth: 0 }}
+                onClick={() => navigate("/")}
+              >
+                <Box
                   sx={{
-                    ...navButtonStyles,
-                    color: location.pathname === link.path ? "#38bdf8" : "#cbd5e1"
+                    width: 44,
+                    height: 44,
+                    borderRadius: "16px",
+                    background: "linear-gradient(135deg,#1d4ed8,#60a5fa)",
+                    display: "grid",
+                    placeItems: "center",
+                    boxShadow: "0 16px 35px rgba(37,99,235,0.22)"
                   }}
                 >
-                  {link.label}
-                </Button>
-              ))}
-            </Box>
+                  <Typography variant="h6" sx={{ color: "#fff", fontWeight: 900, lineHeight: 1 }}>
+                    AI
+                  </Typography>
+                </Box>
+
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography
+                    variant="h6"
+                    fontWeight={900}
+                    sx={{
+                      background: brandGradient,
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                      letterSpacing: "0.6px"
+                    }}
+                  >
+                    RecruitAI RMS
+                  </Typography>
+                  <Typography sx={{ color: "#94a3b8", fontSize: 12, letterSpacing: "0.3px" }}>
+                    Recruitment Management System
+                  </Typography>
+                </Box>
+              </Box>
+
+              {!isSystemAdmin && (
+                <Box sx={{ display: { xs: "none", md: "flex" }, alignItems: "center", gap: 1.5, flex: 1, justifyContent: "center" }}>
+                  {navLinks.map((link) => (
+                    <Button
+                      key={link.label}
+                      onClick={() => handleNavigate(link.path)}
+                      sx={{
+                        ...navButtonStyles,
+                        color: location.pathname === link.path ? "#38bdf8" : "#cbd5e1"
+                      }}
+                    >
+                      {link.label}
+                    </Button>
+                  ))}
+                </Box>
+              )}
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                {isMobile ? (
+                  <IconButton onClick={(event) => setMobileAnchor(event.currentTarget)} sx={{ color: "#cbd5e1" }}>
+                    <MenuIcon />
+                  </IconButton>
+                ) : (
+                  <>
+                    {isPublic && (
+                      <>
+                        <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(96,165,250,0.24)", background: "rgba(255,255,255,0.04)" }} onClick={() => navigate("/auth")}>Login</Button>
+                        <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)" }} onClick={() => navigate("/auth")}>Signup</Button>
+                        <Button sx={primaryActionStyles} onClick={() => navigate("/request-demo")}>
+                          Get Demo
+                        </Button>
+                      </>
+                    )}
+
+                    {isCandidate && (
+                      <>
+                        <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(96,165,250,0.22)", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("/request-demo")}>
+                          Get Demo
+                        </Button>
+                        <Button
+                          onClick={(event) => setProfileAnchor(event.currentTarget)}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "#fff",
+                            textTransform: "none",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(255,255,255,0.04)",
+                            px: 2,
+                            py: 1,
+                            borderRadius: "14px"
+                          }}
+                        >
+                          <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
+                          <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
+                          <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                        </Button>
+                      </>
+                    )}
+
+                    {isCompanyAdmin && (
+                      <>
+                        <IconButton sx={{ color: "#cbd5e1", py: 1, px: 1.2, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(148,163,184,0.16)" }}>
+                          <Badge badgeContent={5} color="error">
+                            <NotificationsIcon />
+                          </Badge>
+                        </IconButton>
+                        <Button
+                          onClick={(event) => setProfileAnchor(event.currentTarget)}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            color: "#fff",
+                            textTransform: "none",
+                            border: "1px solid rgba(255,255,255,0.12)",
+                            background: "rgba(255,255,255,0.04)",
+                            px: 2,
+                            py: 1,
+                            borderRadius: "14px"
+                          }}
+                        >
+                          <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
+                          <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
+                          <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                        </Button>
+                      </>
+                    )}
+                  </>
+                )}
+              </Box>
+            </>
           )}
-
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            {isMobile ? (
-              <IconButton onClick={(event) => setMobileAnchor(event.currentTarget)} sx={{ color: "#cbd5e1" }}>
-                <MenuIcon />
-              </IconButton>
-            ) : (
-              <>
-                {isPublic && (
-                  <>
-                    <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(96,165,250,0.24)", background: "rgba(255,255,255,0.04)" }} onClick={() => navigate("/auth")}>Login</Button>
-                    <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.06)" }} onClick={() => navigate("/auth")}>Signup</Button>
-                    <Button sx={primaryActionStyles} onClick={() => navigate("/request-demo")}>
-                      Get Demo
-                    </Button>
-                  </>
-                )}
-
-                {isCandidate && (
-                  <>
-                    <Button sx={{ ...actionButtonStyles, color: "#fff", border: "1px solid rgba(96,165,250,0.22)", background: "rgba(255,255,255,0.08)" }} onClick={() => navigate("/request-demo")}>
-                      Get Demo
-                    </Button>
-                    <Button
-                      onClick={(event) => setProfileAnchor(event.currentTarget)}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        color: "#fff",
-                        textTransform: "none",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.04)",
-                        px: 2,
-                        py: 1,
-                        borderRadius: "14px"
-                      }}
-                    >
-                      <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
-                      <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
-                      <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
-                    </Button>
-                  </>
-                )}
-
-                {isCompanyAdmin && (
-                  <>
-                    <IconButton sx={{ color: "#cbd5e1", py: 1, px: 1.2, background: "rgba(255,255,255,0.03)", border: "1px solid rgba(148,163,184,0.16)" }}>
-                      <Badge badgeContent={5} color="error">
-                        <NotificationsIcon />
-                      </Badge>
-                    </IconButton>
-                    <Button
-                      onClick={(event) => setProfileAnchor(event.currentTarget)}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        color: "#fff",
-                        textTransform: "none",
-                        border: "1px solid rgba(255,255,255,0.12)",
-                        background: "rgba(255,255,255,0.04)",
-                        px: 2,
-                        py: 1,
-                        borderRadius: "14px"
-                      }}
-                    >
-                      <Avatar sx={{ width: 34, height: 34, bgcolor: "#1d4ed8", fontWeight: 700 }}>{initials}</Avatar>
-                      <Typography sx={{ color: "#fff", fontWeight: 700 }}>{displayName}</Typography>
-                      <ExpandMoreIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
-                    </Button>
-                  </>
-                )}
-              </>
-            )}
-          </Box>
         </Toolbar>
       </AppBar>
 

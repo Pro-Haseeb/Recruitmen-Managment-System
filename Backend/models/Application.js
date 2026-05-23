@@ -26,6 +26,9 @@ const applicationSchema =
       candidateEmail: {
         type: String,
       },
+      resumetxt : {
+        type: String
+      },
 
       resume: {
         type: String,

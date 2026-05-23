@@ -4,9 +4,11 @@ import {
   ListItemButton,
   ListItemText,
   Box,
-  Typography
+  Typography,
+  IconButton
 } from "@mui/material";
 import { useNavigate, useLocation } from "react-router-dom";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 export default function CandidateSidebar({ open, onClose }) {
   const navigate = useNavigate();
@@ -17,6 +19,7 @@ export default function CandidateSidebar({ open, onClose }) {
     { name: "Applied Jobs", path: "/candidate/applied" },
     { name: "My Profile", path: "/candidate/profile" },
     { name: "Notifications", path: "/candidate/notifications" },
+    { name: "Back to Home", path: "/" }
   ];
 
   return (
@@ -78,6 +81,24 @@ export default function CandidateSidebar({ open, onClose }) {
           borderBottom: "1px solid rgba(255,255,255,0.06)"
         }}
       >
+        {/* BACK TO HOME BUTTON */}
+        <IconButton
+          onClick={() => navigate("/")}
+          sx={{
+            position: "absolute",
+            top: 12,
+            left: 12,
+            color: "rgba(255,255,255,0.4)",
+            transition: "all 0.3s ease",
+            "&:hover": {
+              color: "#a855f7",
+              background: "rgba(168,85,247,0.08)",
+              transform: "translateX(-2px)"
+            }
+          }}
+        >
+          <ArrowBackIcon sx={{ fontSize: 18 }} />
+        </IconButton>
         <Box
           sx={{
             width: 70,
