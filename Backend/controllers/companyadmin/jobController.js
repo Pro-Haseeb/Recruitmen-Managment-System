@@ -10,8 +10,23 @@ export const createJob = async (req, res) => {
       description,
       location,
       salary,
-      deadline
+      deadline,
+      skills,
+      experienceLevel,
+      education,
     } = req.body;
+
+    if (!user.company) {
+      return res.status(400).json({
+        message: "Your account is not linked to a company. Contact support.",
+      });
+    }
+
+    const parsedSkills = Array.isArray(skills)
+      ? skills
+      : typeof skills === "string"
+        ? skills.split(",").map((s) => s.trim()).filter(Boolean)
+        : [];
 
     const job = await Job.create({
       title,
@@ -19,9 +34,11 @@ export const createJob = async (req, res) => {
       location,
       salary,
       deadline,
-
+      skills: parsedSkills,
+      experienceLevel,
+      education,
+      status: "open",
       company: user.company,
-
       createdBy: user._id,
     });
 

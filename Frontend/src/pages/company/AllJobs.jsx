@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Box, Typography, Grid, Chip, Skeleton } from "@mui/material";
 import { motion } from "framer-motion";
 import WorkIcon from "@mui/icons-material/Work";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
-import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PeopleIcon from "@mui/icons-material/People";
 
 import { getAllJobs } from "../../services/CandidateApi.js";
@@ -12,6 +12,12 @@ import { getCompanyApplications } from "../../services/ApplicationApi.js";
 import { getHRs } from "../../services/CompanyApi.js";
 import DetailOverlay, { OverlayField, OverlayBadge, OverlaySection } from "../../components/shared/DetailOverlay";
 import Pagination from "../../components/shared/Pagination";
+import JobAnalysisActions from "../../components/recruitmentAnalysis/JobAnalysisActions.jsx";
+import AiAnalysisSetupModal from "../../components/recruitmentAnalysis/AiAnalysisSetupModal.jsx";
+import AiAnalysisProcessing from "../../components/recruitmentAnalysis/AiAnalysisProcessing.jsx";
+import { runAiAnalysis } from "../../services/recruitmentAnalysisService.js";
+import { saveAnalysisSession } from "../../utils/recruitmentAnalysis/analysisStorage.js";
+import { formatJobDeadline, getApplicationPhase } from "../../utils/recruitmentAnalysis/jobDeadline.js";
 
 const PER_PAGE = 5;
 
@@ -43,11 +49,16 @@ function GlassCard({ children, onClick, sx = {} }) {
 }
 
 export default function AllJobs() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [analysisJob, setAnalysisJob] = useState(null);
+  const [analysisCriteria, setAnalysisCriteria] = useState([]);
+  const [setupOpen, setSetupOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     const fetchJobsAndDetails = async () => {
@@ -150,6 +161,39 @@ export default function AllJobs() {
     }).length;
   };
 
+  const getJobApplications = (jobId) =>
+    applications.filter((app) => {
+      const jid = app.job?._id || app.job;
+      return jid === jobId;
+    });
+
+  const handleOpenAnalysis = (job) => {
+    setAnalysisJob(job);
+    setSetupOpen(true);
+  };
+
+  const handleStartAnalysis = async ({ criteria }) => {
+    if (!analysisJob) return;
+    setSetupOpen(false);
+    setAnalysisCriteria(criteria);
+    setProcessing(true);
+    try {
+      const jobApps = getJobApplications(analysisJob._id);
+      const results = await runAiAnalysis({
+        job: analysisJob,
+        applications: jobApps,
+        criteria,
+      });
+      saveAnalysisSession(analysisJob._id, { job: analysisJob, criteria, results });
+      navigate(`/company/jobs/${analysisJob._id}/ai-results`);
+    } catch (e) {
+      console.error(e);
+      alert("Analysis failed. Please try again.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
   const totalPages = Math.ceil(jobs.length / PER_PAGE);
   const paginated = jobs.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
 
@@ -170,7 +214,7 @@ export default function AllJobs() {
         {loading ? (
           <Grid container spacing={3}>
             {[...Array(4)].map((_, i) => (
-              <Grid item xs={12} md={6} key={i}>
+              <Grid size={{ xs: 12, md: 6 }} key={i}>
                 <GlassCard>
                   <Skeleton variant="text" width="60%" height={32} sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
                   <Skeleton variant="text" width="40%" sx={{ bgcolor: "rgba(255,255,255,0.05)", mt: 1 }} />
@@ -192,10 +236,16 @@ export default function AllJobs() {
                 const applicantsCount = getApplicantsCount(job._id);
                 const status = job.status || "Active";
                 const isActive = status.toLowerCase() === "active" || status.toLowerCase() === "open";
+                const phase = getApplicationPhase(job);
+                const collecting = phase === "collecting";
                 
                 return (
-                  <Grid item xs={12} md={6} key={job._id || idx}>
-                    <GlassCard onClick={() => setSelectedJob(job)}>
+                  <Grid size={{ xs: 12, md: 6 }} key={job._id || idx}>
+                    <GlassCard>
+                      <Box
+                        onClick={() => setSelectedJob(job)}
+                        sx={{ cursor: "pointer" }}
+                      >
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                         <Box sx={{ minWidth: 0, flex: 1, pr: 2 }}>
                           <Typography variant="h6" fontWeight="700" sx={{ color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -204,7 +254,13 @@ export default function AllJobs() {
                           <Typography variant="body2" sx={{ color: "#94a3b8", display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
                             <LocationOnIcon sx={{ fontSize: 14 }} /> {job.location || "Remote"}
                           </Typography>
+                          {job.deadline && (
+                            <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 0.5 }}>
+                              Deadline: {formatJobDeadline(job)}
+                            </Typography>
+                          )}
                         </Box>
+                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-end" }}>
                         <Chip
                           label={status}
                           size="small"
@@ -214,6 +270,19 @@ export default function AllJobs() {
                             fontWeight: 700 
                           }}
                         />
+                        {collecting && (
+                          <Chip
+                            label="Collecting Applications"
+                            size="small"
+                            sx={{
+                              bgcolor: "rgba(251, 191, 36, 0.1)",
+                              color: "#fbbf24",
+                              fontWeight: 700,
+                              fontSize: "10px",
+                            }}
+                          />
+                        )}
+                        </Box>
                       </Box>
 
                       <Typography
@@ -240,6 +309,13 @@ export default function AllJobs() {
                           <PeopleIcon sx={{ fontSize: 16 }} /> {applicantsCount} {applicantsCount === 1 ? "applicant" : "applicants"}
                         </Typography>
                       </Box>
+                      </Box>
+
+                      <JobAnalysisActions
+                        job={job}
+                        onAnalyze={handleOpenAnalysis}
+                        compact
+                      />
                     </GlassCard>
                   </Grid>
                 );
@@ -324,7 +400,11 @@ export default function AllJobs() {
               </OverlayField>
             )}
 
+            <OverlaySection label="Recruitment Actions" />
+            <JobAnalysisActions job={selectedJob} onAnalyze={handleOpenAnalysis} />
+
             <OverlaySection label="Timeline" />
+            <OverlayField label="Application Deadline" value={formatJobDeadline(selectedJob)} />
             <OverlayField label="Date Posted">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <DateRangeIcon sx={{ fontSize: 16, color: "#475569" }} />
@@ -336,6 +416,21 @@ export default function AllJobs() {
           </Box>
         )}
       </DetailOverlay>
+
+      <AiAnalysisSetupModal
+        open={setupOpen}
+        job={analysisJob}
+        onClose={() => {
+          setSetupOpen(false);
+          setAnalysisJob(null);
+        }}
+        onStart={handleStartAnalysis}
+      />
+      <AiAnalysisProcessing
+        open={processing}
+        jobTitle={analysisJob?.title || "Position"}
+        criteria={analysisCriteria}
+      />
     </motion.div>
   );
 }

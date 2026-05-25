@@ -31,6 +31,8 @@ import CreateJob from './pages/company/CreateJob';
 import Applications from './pages/company/Applications';
 import TeamManagement from './pages/company/TeamManagement';
 import CompanySettings from './pages/company/Settings';
+import JobApplicationsView from './pages/company/JobApplicationsView';
+import AiAnalysisResults from './pages/company/AiAnalysisResults';
 
 // Candidate Pages
 import CandidateLayout from './layout/CandidateLayout';
@@ -59,6 +61,8 @@ const App = () => {
         <Route path="/company" element={<CompanyLayout />}>
           <Route index element={<CompanyDashboard />} />
           <Route path="jobs" element={<AllJobs />} />
+          <Route path="jobs/:jobId/applications" element={<JobApplicationsView />} />
+          <Route path="jobs/:jobId/ai-results" element={<AiAnalysisResults />} />
           <Route path="create-job" element={<CreateJob />} />
           <Route path="applications" element={<Applications />} />
 

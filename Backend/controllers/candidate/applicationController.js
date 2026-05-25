@@ -1,7 +1,7 @@
 import Application from "../../models/Application.js";
 import Job from "../../models/Job.js";
 import { extractResumeText } from "../../utils/extractResumeText.js";
-
+import { parseResumeWithAI } from "../../utils/parseResumeWithAi.js";
 export const applyJob = async (
     req,
     res
@@ -16,6 +16,10 @@ export const applyJob = async (
         const job = await Job.findById(jobId);
 
         const resumeText = await extractResumeText(req.file);
+        
+        const parsedData = await parseResumeWithAI(resumeText);
+
+        console.log(parsedData);
 
         if (!job) {
             return res.status(404).json({

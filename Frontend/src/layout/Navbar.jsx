@@ -65,7 +65,7 @@ export default function Navbar({ hasSidebar = false, sidebarWidth = drawerWidth 
     if (isCompanyAdmin)
       return [
         { label: "Dashboard", path: "/company" },
-        { label: "Jobs", path: "/company/createjob" },
+        { label: "Jobs", path: "/company/create-job" },
         { label: "Candidates", path: "/company" },
         { label: "HR Team", path: "/company" }
       ];
