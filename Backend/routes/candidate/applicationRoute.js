@@ -3,6 +3,8 @@ import express from "express";
 import {
     applyJob,
     getCompanyApplications,
+    getJobRanking,
+    updateApplicationStatus,
 } from "../../controllers/candidate/applicationController.js";
 
 import {
@@ -33,6 +35,26 @@ router.get(
         "hr"
     ),
     getCompanyApplications
+);
+
+router.get(
+    "/job-ranking/:jobId",
+    protect,
+    authorizeRoles(
+        "company_admin",
+        "hr"
+    ),
+    getJobRanking
+);
+
+router.patch(
+    "/status/:id",
+    protect,
+    authorizeRoles(
+        "company_admin",
+        "hr"
+    ),
+    updateApplicationStatus
 );
 
 export default router;

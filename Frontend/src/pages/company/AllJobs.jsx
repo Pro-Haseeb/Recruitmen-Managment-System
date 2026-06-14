@@ -1,23 +1,37 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Box, Typography, Grid, Chip, Skeleton } from "@mui/material";
+import { 
+  Box, 
+  Typography, 
+  Grid, 
+  Chip, 
+  Skeleton, 
+  Slider, 
+  Button, 
+  Alert, 
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Divider,
+  Paper
+} from "@mui/material";
 import { motion } from "framer-motion";
 import WorkIcon from "@mui/icons-material/Work";
 import DateRangeIcon from "@mui/icons-material/DateRange";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import PeopleIcon from "@mui/icons-material/People";
+import StarIcon from "@mui/icons-material/Star";
+import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
+import LockIcon from "@mui/icons-material/Lock";
+import ShieldIcon from "@mui/icons-material/Shield";
 
 import { getAllJobs } from "../../services/CandidateApi.js";
 import { getCompanyApplications } from "../../services/ApplicationApi.js";
-import { getHRs } from "../../services/CompanyApi.js";
+import { getHRs, updateJobCriteria } from "../../services/CompanyApi.js";
+import { getJobRanking } from "../../services/ApplicationApi.js";
 import DetailOverlay, { OverlayField, OverlayBadge, OverlaySection } from "../../components/shared/DetailOverlay";
 import Pagination from "../../components/shared/Pagination";
-import JobAnalysisActions from "../../components/recruitmentAnalysis/JobAnalysisActions.jsx";
-import AiAnalysisSetupModal from "../../components/recruitmentAnalysis/AiAnalysisSetupModal.jsx";
-import AiAnalysisProcessing from "../../components/recruitmentAnalysis/AiAnalysisProcessing.jsx";
-import { runAiAnalysis } from "../../services/recruitmentAnalysisService.js";
-import { saveAnalysisSession } from "../../utils/recruitmentAnalysis/analysisStorage.js";
-import { formatJobDeadline, getApplicationPhase } from "../../utils/recruitmentAnalysis/jobDeadline.js";
 
 const PER_PAGE = 5;
 
@@ -49,16 +63,18 @@ function GlassCard({ children, onClick, sx = {} }) {
 }
 
 export default function AllJobs() {
-  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(0);
   const [selectedJob, setSelectedJob] = useState(null);
-  const [analysisJob, setAnalysisJob] = useState(null);
-  const [analysisCriteria, setAnalysisCriteria] = useState([]);
-  const [setupOpen, setSetupOpen] = useState(false);
-  const [processing, setProcessing] = useState(false);
+
+  // Evaluation States
+  const [weights, setWeights] = useState({ skills: 40, experience: 25, education: 20, projects: 15 });
+  const [isLocked, setIsLocked] = useState(false);
+  const [ranking, setRanking] = useState([]);
+  const [rankingLoading, setRankingLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
 
   useEffect(() => {
     const fetchJobsAndDetails = async () => {
@@ -67,7 +83,6 @@ export default function AllJobs() {
         const userStr = localStorage.getItem("user");
         const user = userStr ? JSON.parse(userStr) : null;
 
-        // Fetch applications and jobs in parallel
         const [jobRes, appRes] = await Promise.all([
           getAllJobs(),
           getCompanyApplications().catch(err => {
@@ -80,15 +95,12 @@ export default function AllJobs() {
         const companyApps = Array.isArray(appRes.data) ? appRes.data : [];
         setApplications(companyApps);
 
-        // --- Robust Multi-Tier Company ID Resolution ---
         let myCompanyId = user?.company;
 
-        // 1. Try resolving company ID from applications
         if (!myCompanyId && companyApps.length > 0) {
           myCompanyId = companyApps[0].company?._id || companyApps[0].company;
         }
 
-        // 2. Try resolving company ID from jobs created by current user
         if (!myCompanyId && allJobs.length > 0 && user) {
           const matchingJob = allJobs.find(j => {
             const creatorId = j.createdBy?._id || j.createdBy;
@@ -99,7 +111,6 @@ export default function AllJobs() {
           }
         }
 
-        // 3. Try resolving company ID from HRs (for company_admin only)
         if (!myCompanyId && user?.role === 'company_admin') {
           try {
             const hrRes = await getHRs();
@@ -112,7 +123,6 @@ export default function AllJobs() {
           }
         }
 
-        // 4. Try resolving via name string matching heuristic
         if (!myCompanyId && allJobs.length > 0 && user) {
           const matchedJob = allJobs.find(j => {
             const companyName = j.company?.name || '';
@@ -127,8 +137,6 @@ export default function AllJobs() {
           }
         }
 
-        // If we found a company ID, filter only that company's jobs.
-        // Otherwise, if no company ID could be resolved (no jobs/apps yet), display empty state.
         let filteredJobs = [];
         if (myCompanyId) {
           filteredJobs = allJobs.filter((j) => {
@@ -136,8 +144,6 @@ export default function AllJobs() {
             return cid === myCompanyId;
           });
         } else if (user) {
-          // As a fallback, if this company has created jobs but we couldn't resolve the ID,
-          // filter by creator email or creator ID so they can still see their own posted jobs.
           filteredJobs = allJobs.filter(j => {
             const creatorId = j.createdBy?._id || j.createdBy;
             return creatorId === user._id || j.createdBy?.email === user.email;
@@ -154,6 +160,78 @@ export default function AllJobs() {
     fetchJobsAndDetails();
   }, []);
 
+  const fetchRanking = async (jobId) => {
+    try {
+      setRankingLoading(true);
+      const res = await getJobRanking(jobId);
+      setRanking(res.data || []);
+    } catch (err) {
+      console.error("Error fetching job ranking:", err);
+    } finally {
+      setRankingLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedJob) {
+      const isJobLocked = selectedJob.rankingGenerated || selectedJob.screeningStarted;
+      setIsLocked(!!isJobLocked);
+      if (selectedJob.criteriaWeights) {
+        setWeights({
+          skills: selectedJob.criteriaWeights.skills ?? 40,
+          experience: selectedJob.criteriaWeights.experience ?? 25,
+          education: selectedJob.criteriaWeights.education ?? 20,
+          projects: selectedJob.criteriaWeights.projects ?? 15,
+        });
+      } else {
+        setWeights({ skills: 40, experience: 25, education: 20, projects: 15 });
+      }
+
+      if (isJobLocked) {
+        fetchRanking(selectedJob._id);
+      } else {
+        setRanking([]);
+      }
+    }
+  }, [selectedJob]);
+
+  const handleWeightChange = (field, value) => {
+    setWeights(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleLockAndEvaluate = async () => {
+    const total = Number(weights.skills) + Number(weights.experience) + Number(weights.education) + Number(weights.projects);
+    if (total !== 100) {
+      alert("Weights must total exactly 100%");
+      return;
+    }
+
+    try {
+      setSubmitLoading(true);
+      const res = await updateJobCriteria(selectedJob._id, weights);
+      setIsLocked(true);
+      
+      const updatedJob = { 
+        ...selectedJob, 
+        criteriaWeights: { ...weights, certifications: 0 },
+        rankingGenerated: true,
+        screeningStarted: true
+      };
+      setSelectedJob(updatedJob);
+      setJobs(prev => prev.map(j => j._id === selectedJob._id ? updatedJob : j));
+      
+      await fetchRanking(selectedJob._id);
+    } catch (err) {
+      console.error("Error updating criteria:", err);
+      alert(err.response?.data?.message || "Failed to update criteria");
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   const getApplicantsCount = (jobId) => {
     return applications.filter(app => {
       const jid = app.job?._id || app.job;
@@ -161,41 +239,11 @@ export default function AllJobs() {
     }).length;
   };
 
-  const getJobApplications = (jobId) =>
-    applications.filter((app) => {
-      const jid = app.job?._id || app.job;
-      return jid === jobId;
-    });
-
-  const handleOpenAnalysis = (job) => {
-    setAnalysisJob(job);
-    setSetupOpen(true);
-  };
-
-  const handleStartAnalysis = async ({ criteria }) => {
-    if (!analysisJob) return;
-    setSetupOpen(false);
-    setAnalysisCriteria(criteria);
-    setProcessing(true);
-    try {
-      const jobApps = getJobApplications(analysisJob._id);
-      const results = await runAiAnalysis({
-        job: analysisJob,
-        applications: jobApps,
-        criteria,
-      });
-      saveAnalysisSession(analysisJob._id, { job: analysisJob, criteria, results });
-      navigate(`/company/jobs/${analysisJob._id}/ai-results`);
-    } catch (e) {
-      console.error(e);
-      alert("Analysis failed. Please try again.");
-    } finally {
-      setProcessing(false);
-    }
-  };
-
   const totalPages = Math.ceil(jobs.length / PER_PAGE);
   const paginated = jobs.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+  const totalSum = Number(weights.skills) + Number(weights.experience) + Number(weights.education) + Number(weights.projects);
+  const isValid = totalSum === 100;
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -214,7 +262,7 @@ export default function AllJobs() {
         {loading ? (
           <Grid container spacing={3}>
             {[...Array(4)].map((_, i) => (
-              <Grid size={{ xs: 12, md: 6 }} key={i}>
+              <Grid item xs={12} md={6} key={i}>
                 <GlassCard>
                   <Skeleton variant="text" width="60%" height={32} sx={{ bgcolor: "rgba(255,255,255,0.05)" }} />
                   <Skeleton variant="text" width="40%" sx={{ bgcolor: "rgba(255,255,255,0.05)", mt: 1 }} />
@@ -236,16 +284,10 @@ export default function AllJobs() {
                 const applicantsCount = getApplicantsCount(job._id);
                 const status = job.status || "Active";
                 const isActive = status.toLowerCase() === "active" || status.toLowerCase() === "open";
-                const phase = getApplicationPhase(job);
-                const collecting = phase === "collecting";
                 
                 return (
-                  <Grid size={{ xs: 12, md: 6 }} key={job._id || idx}>
-                    <GlassCard>
-                      <Box
-                        onClick={() => setSelectedJob(job)}
-                        sx={{ cursor: "pointer" }}
-                      >
+                  <Grid item xs={12} md={6} key={job._id || idx}>
+                    <GlassCard onClick={() => setSelectedJob(job)}>
                       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", mb: 2 }}>
                         <Box sx={{ minWidth: 0, flex: 1, pr: 2 }}>
                           <Typography variant="h6" fontWeight="700" sx={{ color: "#fff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -254,13 +296,7 @@ export default function AllJobs() {
                           <Typography variant="body2" sx={{ color: "#94a3b8", display: "flex", alignItems: "center", gap: 0.5, mt: 0.5 }}>
                             <LocationOnIcon sx={{ fontSize: 14 }} /> {job.location || "Remote"}
                           </Typography>
-                          {job.deadline && (
-                            <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 0.5 }}>
-                              Deadline: {formatJobDeadline(job)}
-                            </Typography>
-                          )}
                         </Box>
-                        <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5, alignItems: "flex-end" }}>
                         <Chip
                           label={status}
                           size="small"
@@ -270,19 +306,6 @@ export default function AllJobs() {
                             fontWeight: 700 
                           }}
                         />
-                        {collecting && (
-                          <Chip
-                            label="Collecting Applications"
-                            size="small"
-                            sx={{
-                              bgcolor: "rgba(251, 191, 36, 0.1)",
-                              color: "#fbbf24",
-                              fontWeight: 700,
-                              fontSize: "10px",
-                            }}
-                          />
-                        )}
-                        </Box>
                       </Box>
 
                       <Typography
@@ -309,13 +332,6 @@ export default function AllJobs() {
                           <PeopleIcon sx={{ fontSize: 16 }} /> {applicantsCount} {applicantsCount === 1 ? "applicant" : "applicants"}
                         </Typography>
                       </Box>
-                      </Box>
-
-                      <JobAnalysisActions
-                        job={job}
-                        onAnalyze={handleOpenAnalysis}
-                        compact
-                      />
                     </GlassCard>
                   </Grid>
                 );
@@ -339,6 +355,7 @@ export default function AllJobs() {
         open={!!selectedJob}
         onClose={() => setSelectedJob(null)}
         title="Job Position Details"
+        maxWidth="600px"
       >
         {selectedJob && (
           <Box>
@@ -400,11 +417,7 @@ export default function AllJobs() {
               </OverlayField>
             )}
 
-            <OverlaySection label="Recruitment Actions" />
-            <JobAnalysisActions job={selectedJob} onAnalyze={handleOpenAnalysis} />
-
             <OverlaySection label="Timeline" />
-            <OverlayField label="Application Deadline" value={formatJobDeadline(selectedJob)} />
             <OverlayField label="Date Posted">
               <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                 <DateRangeIcon sx={{ fontSize: 16, color: "#475569" }} />
@@ -413,24 +426,202 @@ export default function AllJobs() {
                 </Typography>
               </Box>
             </OverlayField>
+
+            {/* EVALUATION CRITERIA WEIGHTS SECTION */}
+            <OverlaySection label="Evaluation Criteria & Weights" />
+            <Box sx={{ mb: 4, p: 2.5, borderRadius: "16px", background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)" }}>
+              {isLocked ? (
+                <Box>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, color: "#34d399" }}>
+                    <ShieldIcon sx={{ fontSize: 18 }} />
+                    <Typography variant="subtitle2" fontWeight="700">
+                      Criteria Locked & Active
+                    </Typography>
+                  </Box>
+                  <Grid container spacing={2}>
+                    {Object.entries(weights).map(([key, val]) => (
+                      <Grid item xs={6} sm={3} key={key}>
+                        <Paper sx={{ p: 1.5, textAlign: "center", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: "10px" }}>
+                          <Typography variant="caption" sx={{ color: "#64748b", textTransform: "capitalize", fontWeight: 600 }}>
+                            {key}
+                          </Typography>
+                          <Typography variant="h6" fontWeight="800" sx={{ color: "#60a5fa" }}>
+                            {val}%
+                          </Typography>
+                        </Paper>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Box>
+              ) : (
+                <Box>
+                  <Typography variant="body2" sx={{ color: "#94a3b8", mb: 3 }}>
+                    Configure the weights (totalling 100%) below to initialize screening. Once weights are locked, candidates will be evaluated and ranked.
+                  </Typography>
+
+                  <Grid container spacing={2}>
+                    {Object.entries(weights).map(([key, val]) => (
+                      <Grid item xs={12} key={key} sx={{ mb: 1.5 }}>
+                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                          <Typography variant="body2" fontWeight="700" sx={{ textTransform: "capitalize", color: "#e2e8f0" }}>
+                            {key}
+                          </Typography>
+                          <Typography variant="body2" fontWeight="700" sx={{ color: "#60a5fa" }}>
+                            {val}%
+                          </Typography>
+                        </Box>
+                        <Slider
+                          value={val}
+                          onChange={(e, newVal) => handleWeightChange(key, newVal)}
+                          min={0}
+                          max={100}
+                          step={5}
+                          valueLabelDisplay="auto"
+                          sx={{
+                            color: "#60a5fa",
+                            height: 6,
+                            "& .MuiSlider-thumb": {
+                              width: 14,
+                              height: 14,
+                              background: "#fff",
+                            }
+                          }}
+                        />
+                      </Grid>
+                    ))}
+                  </Grid>
+
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: 2, pt: 2, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                    <Typography 
+                      variant="subtitle2" 
+                      fontWeight="700" 
+                      sx={{ color: isValid ? "#34d399" : "#fbbf24" }}
+                    >
+                      Total Allocation: {totalSum}% {isValid ? "(Valid)" : "(Must equal 100%)"}
+                    </Typography>
+
+                    <Button
+                      variant="contained"
+                      onClick={handleLockAndEvaluate}
+                      disabled={!isValid || submitLoading}
+                      startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : <LockIcon />}
+                      sx={{
+                        textTransform: "none",
+                        borderRadius: "10px",
+                        fontWeight: 700,
+                        background: isValid ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" : "rgba(255,255,255,0.05)",
+                        "&:hover": {
+                          background: isValid ? "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)" : "rgba(255,255,255,0.05)"
+                        }
+                      }}
+                    >
+                      Lock & Evaluate
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+            </Box>
+
+            {/* CANDIDATE LEADERBOARD */}
+            <OverlaySection label="Candidate Leaderboard" />
+            {!isLocked ? (
+              <Box sx={{ p: 4, borderRadius: "16px", background: "rgba(255,255,255,0.01)", border: "1px dashed rgba(255,255,255,0.1)", textAlign: "center" }}>
+                <EmojiEventsIcon sx={{ fontSize: 40, color: "#475569", mb: 1.5 }} />
+                <Typography variant="subtitle1" fontWeight="700" sx={{ color: "#e2e8f0", mb: 0.5 }}>
+                  Evaluation Pending
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#64748b" }}>
+                  Please set and lock the criteria weights above to process resume scores and view the rankings.
+                </Typography>
+              </Box>
+            ) : rankingLoading ? (
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} variant="rounded" height={60} sx={{ bgcolor: "rgba(255,255,255,0.03)", borderRadius: "12px" }} />
+                ))}
+              </Box>
+            ) : ranking.length === 0 ? (
+              <Box sx={{ p: 4, textAlign: "center" }}>
+                <Typography sx={{ color: "#64748b" }}>No applicants have applied yet to score.</Typography>
+              </Box>
+            ) : (
+              <List sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                {ranking.map((candidateApp, index) => (
+                  <Paper
+                    key={candidateApp._id || index}
+                    sx={{
+                      p: 2,
+                      borderRadius: "14px",
+                      background: "rgba(255, 255, 255, 0.01)",
+                      border: "1px solid rgba(255,255,255,0.05)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.5
+                    }}
+                  >
+                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+                        <Box
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background: index === 0 ? "rgba(251,191,36,0.15)" : index === 1 ? "rgba(226,232,240,0.1)" : "rgba(255,255,255,0.02)",
+                            border: `1px solid ${index === 0 ? "#fbbf24" : index === 1 ? "#cbd5e1" : "rgba(255,255,255,0.05)"}`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            color: index === 0 ? "#fbbf24" : index === 1 ? "#cbd5e1" : "#64748b"
+                          }}
+                        >
+                          {index + 1}
+                        </Box>
+                        <Box>
+                          <Typography fontWeight="700" sx={{ color: "#fff", fontSize: "14px" }}>
+                            {candidateApp.candidateName || candidateApp.candidate?.name || "—"}
+                          </Typography>
+                          <Typography variant="caption" sx={{ color: "#64748b" }}>
+                            {candidateApp.candidateEmail || candidateApp.candidate?.email || "—"}
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      <Chip
+                        icon={<StarIcon sx={{ "&&": { color: "#fbbf24", fontSize: 14 } }} />}
+                        label={`Score: ${candidateApp.score ?? 0}`}
+                        sx={{ bgcolor: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", color: "#fbbf24", fontWeight: 700, fontSize: "12px" }}
+                      />
+                    </Box>
+
+                    {/* Score Breakdown display */}
+                    {candidateApp.scoreBreakdown && (
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mt: 0.5 }}>
+                        {Object.entries(candidateApp.scoreBreakdown).map(([cKey, cVal]) => (
+                          <Chip
+                            key={cKey}
+                            label={`${cKey.charAt(0).toUpperCase() + cKey.slice(1)}: ${cVal}%`}
+                            size="small"
+                            sx={{ bgcolor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.05)", color: "#cbd5e1", fontSize: "10px" }}
+                          />
+                        ))}
+                      </Box>
+                    )}
+
+                    {candidateApp.feedback && (
+                      <Box sx={{ p: 1.5, borderRadius: "8px", background: "rgba(255,255,255,0.01)", borderLeft: "3px solid #60a5fa" }}>
+                        <Typography variant="caption" sx={{ color: "#94a3b8", fontStyle: "italic", display: "block" }}>
+                          "{candidateApp.feedback}"
+                        </Typography>
+                      </Box>
+                    )}
+                  </Paper>
+                ))}
+              </List>
+            )}
           </Box>
         )}
       </DetailOverlay>
-
-      <AiAnalysisSetupModal
-        open={setupOpen}
-        job={analysisJob}
-        onClose={() => {
-          setSetupOpen(false);
-          setAnalysisJob(null);
-        }}
-        onStart={handleStartAnalysis}
-      />
-      <AiAnalysisProcessing
-        open={processing}
-        jobTitle={analysisJob?.title || "Position"}
-        criteria={analysisCriteria}
-      />
     </motion.div>
   );
 }

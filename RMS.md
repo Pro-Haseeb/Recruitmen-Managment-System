@@ -74,7 +74,8 @@ const jobSchema = new mongoose.Schema({
   deadline: Date,
   status: {
     type: String,
-    enum: ["open", "closed"]
+    enum: ["open", "closed"],
+    default: "open"
   },
   company: {
     type: mongoose.Schema.Types.ObjectId,
@@ -83,8 +84,29 @@ const jobSchema = new mongoose.Schema({
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
-  }
+  },
+  criteriaWeights: {
+    skills: { type: Number, default: 40, min: 0, max: 100 },
+    experience: { type: Number, default: 25, min: 0, max: 100 },
+    education: { type: Number, default: 20, min: 0, max: 100 },
+    certifications: { type: Number, default: 10, min: 0, max: 100 },
+    projects: { type: Number, default: 5, min: 0, max: 100 }
+  },
+  screeningStarted: { type: Boolean, default: false },
+  rankingGenerated: { type: Boolean, default: false }
 }, { timestamps: true });
+
+// Pre-save hook validation: total criteria weights must equal 100
+jobSchema.pre("save", function () {
+  if (!this.criteriaWeights) throw new Error("Criteria weights are required");
+  const total =
+    (this.criteriaWeights.skills || 0) +
+    (this.criteriaWeights.experience || 0) +
+    (this.criteriaWeights.education || 0) +
+    (this.criteriaWeights.certifications || 0) +
+    (this.criteriaWeights.projects || 0);
+  if (total !== 100) throw new Error("Criteria weights must equal 100");
+});
 ```
 
 ---
@@ -93,43 +115,47 @@ const jobSchema = new mongoose.Schema({
 
 ```js
 const applicationSchema = new mongoose.Schema({
-  job: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Job"
-  },
   candidate: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
-  resumeUrl: String,
-  parsedData: {
-    skills: [String],
-    education: String,
-    experience: String
+  company: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Company"
   },
-  aiScore: Number,
-  aiJustification: String,
+  job: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Job"
+  },
+  candidateName: String,
+  candidateEmail: String,
+  resumetxt: String,
+  resume: String,
+  parsedResume: {
+    fullName: String,
+    email: String,
+    phone: String,
+    skills: mongoose.Schema.Types.Mixed,
+    education: mongoose.Schema.Types.Mixed,
+    experience: mongoose.Schema.Types.Mixed,
+    projects: mongoose.Schema.Types.Mixed
+  },
+  score: { type: Number, default: 0 },
+  scoreBreakdown: {
+    skills: { type: Number, default: 0 },
+    experience: { type: Number, default: 0 },
+    education: { type: Number, default: 0 },
+    certifications: { type: Number, default: 0 },
+    projects: { type: Number, default: 0 }
+  },
+  feedback: String,
   status: {
     type: String,
-    enum: [
-      "applied",
-      "shortlisted",
-      "rejected",
-      "interview",
-      "selected",
-      "exported"
-    ],
+    enum: ["applied", "shortlisted", "rejected"],
     default: "applied"
-  },
-  notes: String,
-  exported: {
-    type: Boolean,
-    default: false
   }
 }, { timestamps: true });
-
-// Duplicate prevention
-applicationSchema.index({ job: 1, candidate: 1 }, { unique: true });
+```
 ```
 
 ---
@@ -205,19 +231,23 @@ const exportLogSchema = new mongoose.Schema({
 
 ## Current Progress
 
-* Backend setup completed
-* Database schema designed (production-level)
-* Ready for Auth system implementation
+* **Authentication & Authorization**: Integrated JWT & bcrypt. Role-based access control (RBAC) is active for System Owner, Company Admin, HR, and Candidate.
+* **Company & Team Management**: Implemented HR registration and deletion with dynamic multi-tenant company bounds and a limit of 3 HR users per company.
+* **Job Board Engine**: Created APIs and frontend screens for Job postings. Integrated dynamic Custom Criteria Weights (Skills, Experience, Education, Projects, Certifications) that sum up to 100.
+* **Resume Parsing & AI Scoring**: Connected CV text extraction, AI parsing (GPT-4o-mini via OpenRouter), and dynamic AI scoring. The system ranks candidates based on customized job requirements.
+* **Admin Dashboard & Controls**: Added real-time user blocking/unblocking, paginated accounts ledger, status filters, and interactive demo requests logging.
+* **Candidate Application Management**: Implemented secure application status filtering (Pending, Shortlisted, Rejected), interactive candidate profile drawers, detailed AI-evaluated score breakdown metrics, real-time job-specific leaderboards with candidate ranking calculations, and instant shortlist/reject action controls.
+* **Modern Premium Frontend**: Beautiful Glassmorphism dark-theme UX, responsive layouts, modular sidebars, and slide-out detail drawers.
 
 ---
 
 ## Next Steps
 
-1. Implement User authentication (JWT + bcrypt)
-2. Build Auth APIs
-3. Start Job module APIs
-4. Connect Application pipeline
+1. Complete and integrate Interview scheduling engine (Interviews module API & Candidate notifications).
+2. Develop comprehensive export tools (PDF/Excel data reports for shortlisted candidates).
+3. Expand AI criteria models to support advanced NLP-based domain semantic matching.
+4. Perform final end-to-end integration testing and prepare production deployment build.
 
 ---
 
-This document defines the backend foundation of RMS. Any deviation will break system consistency.
+This document defines the backend foundation and progress of RMS. Any deviation will break system consistency.

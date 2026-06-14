@@ -22,6 +22,7 @@ const initialForm = {
   title: "",
   description: "",
   skills: "",
+  degree: "",
   experienceLevel: "",
   location: "",
   salary: "",
@@ -63,17 +64,7 @@ export default function CreateJob() {
       setFormData(initialForm);
       navigate("/company/jobs");
     } catch (error) {
-      const msg =
-        error.response?.data?.message ||
-        (error.response?.status === 401
-          ? "Session expired. Please log in again."
-          : error.response?.status === 404
-            ? "Job API not found. Ensure the backend is running on port 5000."
-            : error.message === "Network Error"
-              ? "Cannot reach server. Start the backend (npm run dev in Backend)."
-              : "Failed to create job");
-      alert(msg);
-      console.error("Create job error:", error.response?.data || error.message);
+      alert(error.response?.data?.message || "Failed to create job");
     } finally {
       setSubmitting(false);
     }
@@ -131,6 +122,16 @@ export default function CreateJob() {
             onChange={handleChange}
             sx={glassInputStyle}
             placeholder="e.g. React, Node.js, MongoDB"
+          />
+
+          <TextField
+            fullWidth
+            name="degree"
+            label="Qualifications"
+            value={formData.degree}
+            onChange={handleChange}
+            sx={glassInputStyle}
+            placeholder="Qualifications"
           />
 
           <TextField

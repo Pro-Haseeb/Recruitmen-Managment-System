@@ -7,6 +7,8 @@ const jobSchema = new mongoose.Schema(
     description: String,
 
     salary: String,
+    degree: String,
+
 
     skills: [String],
 
@@ -34,48 +36,73 @@ const jobSchema = new mongoose.Schema(
       ref: "User",
     },
 
-    requiredSkills: [String],
-
-    requiredDegree: {
-      type: String,
-    },
-
-    minimumExperience: {
-      type: Number,
-      default: 0,
-    },
-
-    requiredCertifications: [String],
 
     criteriaWeights: {
       skills: {
         type: Number,
         default: 40,
+        min: 0,
+        max: 100
       },
 
       experience: {
         type: Number,
         default: 25,
+        min: 0,
+        max: 100
       },
 
       education: {
         type: Number,
         default: 20,
+        min: 0,
+        max: 100
       },
 
       certifications: {
         type: Number,
         default: 10,
+        min: 0,
+        max: 100
       },
 
       projects: {
         type: Number,
         default: 5,
+        min: 0,
+        max: 100
       },
     },
+    screeningStarted: {
+      type: Boolean,
+      default: false
+    },
+
+    rankingGenerated: {
+      type: Boolean,
+      default: false
+    }
   },
 
   { timestamps: true }
 );
+
+jobSchema.pre("save", function () {
+
+  if (!this.criteriaWeights) {
+    throw new Error("Criteria weights are required");
+  }
+
+  const total =
+    (this.criteriaWeights.skills || 0) +
+    (this.criteriaWeights.experience || 0) +
+    (this.criteriaWeights.education || 0) +
+    (this.criteriaWeights.certifications || 0) +
+    (this.criteriaWeights.projects || 0);
+
+  if (total !== 100) {
+    throw new Error("Criteria weights must equal 100");
+  }
+});
 
 export default mongoose.model("Job", jobSchema);

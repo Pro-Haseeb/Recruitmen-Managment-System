@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 /**
  * CREATE HR
  */
+
+
 export const createHR = async (req, res) => {
   try {
     const admin = req.user; // from auth middleware

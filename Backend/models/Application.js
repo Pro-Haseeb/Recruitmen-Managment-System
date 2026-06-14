@@ -26,7 +26,7 @@ const applicationSchema =
       candidateEmail: {
         type: String,
       },
-      resumetxt : {
+      resumetxt: {
         type: String
       },
 
@@ -34,14 +34,41 @@ const applicationSchema =
         type: String,
       },
 
+      parsedResume: {
+        fullName: String,
+        email: String,
+        phone: String,
+        skills: mongoose.Schema.Types.Mixed,
+        education: mongoose.Schema.Types.Mixed,
+        experience: mongoose.Schema.Types.Mixed,
+        projects: mongoose.Schema.Types.Mixed,
+      },
+
+      score: {
+        type: Number,
+        default: 0,
+      },
+
+      scoreBreakdown: {
+        skills: { type: Number, default: 0 },
+        experience: { type: Number, default: 0 },
+        education: { type: Number, default: 0 },
+        certifications: { type: Number, default: 0 },
+        projects: { type: Number, default: 0 },
+      },
+
+      feedback: {
+        type: String,
+      },
+
       status: {
         type: String,
         enum: [
-          "applied",
+          "pending",
           "shortlisted",
           "rejected",
         ],
-        default: "applied",
+        default: "pending",
       },
 
     },

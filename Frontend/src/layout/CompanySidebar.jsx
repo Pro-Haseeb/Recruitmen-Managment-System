@@ -166,10 +166,7 @@ export default function CompanySidebar({ open, onClose }) {
       {/* MENU */}
       <List sx={{ px: 1.5, py: 3, position: "relative", zIndex: 2 }}>
         {menu.map((item) => {
-          const active =
-            item.path === "/company"
-              ? location.pathname === "/company"
-              : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+          const active = location.pathname === item.path || (location.pathname === "/company" && item.path === "/company");
 
           return (
             <ListItemButton

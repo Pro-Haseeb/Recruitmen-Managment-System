@@ -16,3 +16,14 @@ export const getCompanyApplications = () =>
     API.get(
         "/application/company-applications"
     );
+
+export const getJobRanking = (jobId) =>
+    API.get(
+        `/application/job-ranking/${jobId}`
+    );
+
+export const updateApplicationStatus = (id, status) =>
+    API.patch(
+        `/application/status/${id}`,
+        { status }
+    );
