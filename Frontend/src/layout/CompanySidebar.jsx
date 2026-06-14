@@ -29,10 +29,11 @@ export default function CompanySidebar({ open, onClose }) {
   const isCompanyAdmin = role === "company_admin";
 
   const menu = [
-    { name: "Dashboard", path: "/company" },
-    { name: "All Jobs", path: "/company/jobs" },
-    { name: "Create Job", path: "/company/create-job" },
+    { name: "Dashboard",    path: "/company" },
+    { name: "All Jobs",     path: "/company/jobs" },
+    { name: "Create Job",   path: "/company/create-job" },
     { name: "Applications", path: "/company/applications" },
+    { name: "Interviews",   path: "/company/interviews" },
   ];
 
   if (isCompanyAdmin) {

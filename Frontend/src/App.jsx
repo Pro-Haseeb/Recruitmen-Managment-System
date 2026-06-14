@@ -31,6 +31,7 @@ import CreateJob from './pages/company/CreateJob';
 import Applications from './pages/company/Applications';
 import TeamManagement from './pages/company/TeamManagement';
 import CompanySettings from './pages/company/Settings';
+import CompanyInterviews from './pages/company/Interviews';
 
 // Candidate Pages
 import CandidateLayout from './layout/CandidateLayout';
@@ -61,6 +62,7 @@ const App = () => {
           <Route path="jobs" element={<AllJobs />} />
           <Route path="create-job" element={<CreateJob />} />
           <Route path="applications" element={<Applications />} />
+          <Route path="interviews" element={<CompanyInterviews />} />
 
           {/* Admin Only within Company */}
           <Route element={<ProtectedRoute allowedRoles={['company_admin']} />}>
