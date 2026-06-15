@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 const logSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -11,3 +12,4 @@ const logSchema = new mongoose.Schema({
   details: String
 
 }, { timestamps: true });
+export default mongoose.model("ActivityLog", logSchema);

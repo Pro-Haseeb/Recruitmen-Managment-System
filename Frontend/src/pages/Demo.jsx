@@ -52,12 +52,21 @@ export default function RequestDemo() {
         officialEmail: form.email,
         contactNumber: form.countryCode + form.phone
       };
+
       const res = await requestDemo(payload);
       console.log(res.data);
       alert("Demo requested successfully!")
       navigate("/demo");
     } catch (error) {
       console.log(error);
+
+        if (
+      error.response?.status === 400 
+    ) {
+      alert("This email has already been used for a demo request.");
+    } else {
+      alert("Something went wrong. Please try again.");
+    }
     }
   };
 

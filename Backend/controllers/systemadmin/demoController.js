@@ -13,6 +13,11 @@ export const createDemoRequest = async (req, res) => {
       contactNumber
     } = req.body;
 
+     const DemoExists = await DemoRequest.findOne({ officialEmail });
+
+     if(DemoExists){
+       return res.status(400).json({ message: "User already exists" });
+     }
     // basic validation (important)
     if (!companyName || !officialEmail) {
       return res.status(400).json({

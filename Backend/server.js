@@ -12,6 +12,7 @@ import userRoutes from "./routes/systemadmin/userRoutes.js";
 
 //....... company_admin
 import teamRoutes from "./routes/companyadmin/teamRoutes.js";
+// import exportActivityRoutes from "./routes/companyadmin/exportActivityRoutes.js";
 
 //....... HR
 import jobRoutes from "./routes/companyadmin/jobRoutes.js";
@@ -45,6 +46,7 @@ app.use("/api/system/users", userRoutes);
 
 // ........ company_admin
 app.use("/api/company", teamRoutes);
+// app.use("/api/company", exportActivityRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/jobs", detailJobRoute);
 

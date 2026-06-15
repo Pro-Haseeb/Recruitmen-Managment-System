@@ -23,11 +23,13 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import EmailIcon from "@mui/icons-material/Email";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import FileDownloadIcon from "@mui/icons-material/FileDownload";
+import ActivityIcon from "@mui/icons-material/History";
 import { Link } from "react-router-dom";
 
 import { getAllJobs } from "../../services/CandidateApi";
 import { getCompanyApplications } from "../../services/ApplicationApi";
-import { getHRs } from "../../services/CompanyApi";
+import { getHRs, getExportStats, getActivityStats } from "../../services/CompanyApi";
 import DetailOverlay, { OverlayField, OverlayBadge, OverlaySection } from "../../components/shared/DetailOverlay";
 
 function GlassCard({ children, sx = {} }) {
@@ -63,12 +65,18 @@ export default function CompanyDashboard() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedApp, setSelectedApp] = useState(null);
+  const [exportStats, setExportStats] = useState(null);
+  const [activityStats, setActivityStats] = useState(null);
+  const [user, setUser] = useState(null);
+  const [isCompanyAdmin, setIsCompanyAdmin] = useState(false);
 
   useEffect(() => {
     const loadCompanyData = async () => {
       try {
         const userStr = localStorage.getItem("user");
-        const user = userStr ? JSON.parse(userStr) : null;
+        const userData = userStr ? JSON.parse(userStr) : null;
+        setUser(userData);
+        setIsCompanyAdmin(userData?.role === "company_admin");
 
         const [jobRes, appRes] = await Promise.all([
           getAllJobs(),
@@ -78,12 +86,20 @@ export default function CompanyDashboard() {
           })
         ]);
 
+        // Load export stats
+        getExportStats().then(res => setExportStats(res.data)).catch(() => setExportStats(null));
+
+        // Load activity stats (only for company admin)
+        if (userData?.role === "company_admin") {
+          getActivityStats().then(res => setActivityStats(res.data)).catch(() => setActivityStats(null));
+        }
+
         const allJobs = jobRes.data || [];
         const companyApps = appRes.data || [];
         setApplications(companyApps);
 
         // --- Robust Multi-Tier Company ID Resolution ---
-        let myCompanyId = user?.company;
+        let myCompanyId = userData?.company;
 
         // 1. Try resolving company ID from applications
         if (!myCompanyId && companyApps.length > 0) {
@@ -91,10 +107,10 @@ export default function CompanyDashboard() {
         }
 
         // 2. Try resolving company ID from jobs created by current user
-        if (!myCompanyId && allJobs.length > 0 && user) {
+        if (!myCompanyId && allJobs.length > 0 && userData) {
           const matchingJob = allJobs.find(j => {
             const creatorId = j.createdBy?._id || j.createdBy;
-            return creatorId === user._id || j.createdBy?.email === user.email;
+            return creatorId === userData._id || j.createdBy?.email === userData.email;
           });
           if (matchingJob) {
             myCompanyId = matchingJob.company?._id || matchingJob.company;
@@ -102,7 +118,7 @@ export default function CompanyDashboard() {
         }
 
         // 3. Try resolving company ID from HRs (for company_admin only)
-        if (!myCompanyId && user?.role === 'company_admin') {
+        if (!myCompanyId && userData?.role === 'company_admin') {
           try {
             const hrRes = await getHRs();
             const hrs = hrRes.data || [];
@@ -115,13 +131,13 @@ export default function CompanyDashboard() {
         }
 
         // 4. Try resolving via name string matching heuristic
-        if (!myCompanyId && allJobs.length > 0 && user) {
+        if (!myCompanyId && allJobs.length > 0 && userData) {
           const matchedJob = allJobs.find(j => {
             const companyName = j.company?.name || '';
             if (!companyName) return false;
             const cleanComp = companyName.toLowerCase().replace(/\s+/g, '');
-            const cleanUser = user.name ? user.name.toLowerCase() : '';
-            const cleanEmail = user.email ? user.email.toLowerCase() : '';
+            const cleanUser = userData.name ? userData.name.toLowerCase() : '';
+            const cleanEmail = userData.email ? userData.email.toLowerCase() : '';
             return cleanUser.includes(cleanComp) || cleanEmail.includes(cleanComp);
           });
           if (matchedJob) {
@@ -135,10 +151,10 @@ export default function CompanyDashboard() {
             const cid = j.company?._id || j.company;
             return cid === myCompanyId;
           });
-        } else if (user) {
+        } else if (userData) {
           myJobs = allJobs.filter(j => {
             const creatorId = j.createdBy?._id || j.createdBy;
-            return creatorId === user._id || j.createdBy?.email === user.email;
+            return creatorId === userData._id || j.createdBy?.email === userData.email;
           });
         }
 
@@ -386,6 +402,194 @@ export default function CompanyDashboard() {
             </GlassCard>
           </Grid>
         </Grid>
+
+        {/* EXPORT UI */}
+        <Box sx={{ mt: 4 }}>
+          <Grid container spacing={4}>
+            <Grid item xs={12} md={6}>
+              <GlassCard>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                    <Box sx={{
+                      width: 44, height: 44, borderRadius: "12px",
+                      background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      color: "#22c55e", fontSize: 24,
+                    }}>
+                      <FileDownloadIcon />
+                    </Box>
+                    <Box>
+                      <Typography variant="h6" fontWeight="700">
+                        Export Data
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#64748b" }}>
+                        Manage application exports
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Box>
+
+                {exportStats ? (
+                  <Box sx={{ mb: 2 }}>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                      <Box>
+                        <Typography variant="caption" sx={{ color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>
+                          Total Exports
+                        </Typography>
+                        <Typography variant="h5" sx={{ color: "#22c55e", fontWeight: 800, mt: 0.5 }}>
+                          {exportStats.totalExports || 0}
+                        </Typography>
+                      </Box>
+                      <Box sx={{
+                        width: 50, height: 50, borderRadius: "12px",
+                        background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.2)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <Typography sx={{ color: "#22c55e", fontWeight: 800 }}>
+                          ↓
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 2 }}>
+                      Keep track of all exported application data for record-keeping and compliance.
+                    </Typography>
+                  </Box>
+                ) : (
+                  [...Array(2)].map((_, i) => (
+                    <Skeleton key={i} variant="text" width="100%" sx={{ bgcolor: "rgba(255,255,255,0.05)", mb: 1.5 }} />
+                  ))
+                )}
+
+                <Button
+                  variant="outlined"
+                  fullWidth
+                  startIcon={<FileDownloadIcon />}
+                  sx={{
+                    mt: 2,
+                    textTransform: "none",
+                    color: "#22c55e",
+                    borderColor: "rgba(34,197,94,0.3)",
+                    fontWeight: 600,
+                    "&:hover": {
+                      background: "rgba(34,197,94,0.08)",
+                      borderColor: "rgba(34,197,94,0.5)",
+                    },
+                  }}
+                >
+                  View Export History
+                </Button>
+              </GlassCard>
+            </Grid>
+
+            {/* AUDIT ACTIVITY UI - Only for Company Admin */}
+            {isCompanyAdmin && (
+              <Grid item xs={12} md={6}>
+                <GlassCard>
+                  <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+                      <Box sx={{
+                        width: 44, height: 44, borderRadius: "12px",
+                        background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: "#a855f7", fontSize: 24,
+                      }}>
+                        <ActivityIcon />
+                      </Box>
+                      <Box>
+                        <Typography variant="h6" fontWeight="700">
+                          Audit Activity
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#64748b" }}>
+                          Team activity logs (Admin Only)
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {activityStats ? (
+                    <Box sx={{ mb: 2 }}>
+                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                        <Box>
+                          <Typography variant="caption" sx={{ color: "#94a3b8", textTransform: "uppercase", fontWeight: 700 }}>
+                            Total Activities
+                          </Typography>
+                          <Typography variant="h5" sx={{ color: "#a855f7", fontWeight: 800, mt: 0.5 }}>
+                            {activityStats.totalActivities || 0}
+                          </Typography>
+                        </Box>
+                        <Box sx={{
+                          width: 50, height: 50, borderRadius: "12px",
+                          background: "rgba(168,85,247,0.1)", border: "1px solid rgba(168,85,247,0.2)",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                          <Typography sx={{ color: "#a855f7", fontWeight: 800, fontSize: "18px" }}>
+                            ⧖
+                          </Typography>
+                        </Box>
+                      </Box>
+
+                      {activityStats.recentActivities && activityStats.recentActivities.length > 0 && (
+                        <Box sx={{ mt: 2, pt: 2, borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                          <Typography variant="caption" sx={{ color: "#94a3b8", textTransform: "uppercase", fontWeight: 700, display: "block", mb: 1.5 }}>
+                            Recent Activity
+                          </Typography>
+                          {activityStats.recentActivities.slice(0, 3).map((activity, idx) => (
+                            <Box
+                              key={idx}
+                              sx={{
+                                p: 1, borderRadius: "8px",
+                                background: "rgba(255,255,255,0.01)",
+                                border: "1px solid rgba(255,255,255,0.04)",
+                                mb: 1,
+                              }}
+                            >
+                              <Typography variant="caption" sx={{ color: "#e2e8f0", fontWeight: 600, display: "block" }}>
+                                {activity.user?.name || "Unknown"}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: "#64748b", display: "block", fontSize: "11px" }}>
+                                {activity.action} - {activity.entityType}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: "#475569", fontSize: "10px" }}>
+                                {activity.createdAt ? new Date(activity.createdAt).toLocaleDateString() : "—"}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      )}
+
+                      <Typography variant="caption" sx={{ color: "#64748b", display: "block", mt: 2 }}>
+                        Monitor all team activities including job postings, application updates, and interviews.
+                      </Typography>
+                    </Box>
+                  ) : (
+                    [...Array(3)].map((_, i) => (
+                      <Skeleton key={i} variant="text" width="100%" sx={{ bgcolor: "rgba(255,255,255,0.05)", mb: 1.5 }} />
+                    ))
+                  )}
+
+                  <Button
+                    variant="outlined"
+                    fullWidth
+                    startIcon={<ActivityIcon />}
+                    sx={{
+                      mt: 2,
+                      textTransform: "none",
+                      color: "#a855f7",
+                      borderColor: "rgba(168,85,247,0.3)",
+                      fontWeight: 600,
+                      "&:hover": {
+                        background: "rgba(168,85,247,0.08)",
+                        borderColor: "rgba(168,85,247,0.5)",
+                      },
+                    }}
+                  >
+                    View All Activities
+                  </Button>
+                </GlassCard>
+              </Grid>
+            )}
+          </Grid>
+        </Box>
       </Box>
 
       {/* DETAIL OVERLAY */}
