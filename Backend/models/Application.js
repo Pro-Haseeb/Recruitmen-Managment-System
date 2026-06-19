@@ -67,6 +67,8 @@ const applicationSchema =
           "pending",
           "shortlisted",
           "rejected",
+          "interviewed",
+          "selected"
         ],
         default: "pending",
       },

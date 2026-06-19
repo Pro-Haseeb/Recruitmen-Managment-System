@@ -17,6 +17,7 @@ export default function CandidateSidebar({ open, onClose }) {
   const menu = [
     { name: "Dashboard", path: "/candidate" },
     { name: "Applied Jobs", path: "/candidate/applied" },
+    { name: "Interviews", path: "/candidate/interviews" },
     { name: "My Profile", path: "/candidate/profile" },
     { name: "Notifications", path: "/candidate/notifications" },
     { name: "Back to Home", path: "/" }
@@ -146,7 +147,9 @@ export default function CandidateSidebar({ open, onClose }) {
       {/* MENU */}
       <List sx={{ px: 1.5, py: 3, position: "relative", zIndex: 2 }}>
         {menu.map((item) => {
-          const active = location.pathname === item.path || (location.pathname === "/candidate" && item.path === "/candidate");
+          const active = location.pathname === item.path ||
+            (location.pathname === "/candidate" && item.path === "/candidate") ||
+            (item.path === "/candidate/interviews" && location.pathname.startsWith("/candidate/interviews"));
 
           return (
             <ListItemButton

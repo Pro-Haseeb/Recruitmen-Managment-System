@@ -3,19 +3,17 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
-  
-
   "scripts": {
     "client": "npm run dev --prefix Frontend",
     "server": "npm run dev --prefix Backend",
     "dev": "concurrently \"npm run server\" \"npm run client\""
-  
-},
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "json2csv": "^6.0.0-alpha.2"
   }
 }

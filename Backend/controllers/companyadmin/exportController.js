@@ -1,115 +1,26 @@
+import { Parser } from "json2csv";
+import fs from "fs";
+import path from "path";
 import ExportLog from "../../models/Export.js";
-import axios from "axios";
-import Application from "../models/Application.js";
-import Job from "../models/Job.js";
-import Interview from "../models/Interview.js";
+import Application from "../../models/Application.js" ;
 
-/**
- * @route   POST /api/export/applications
- * @desc    Trigger export via n8n workflow
- */
 export const exportApplications = async (req, res) => {
   try {
     const { status, jobId, minScore, dateFrom, dateTo } = req.body;
 
-    // 1. Create export log first (queued state)
+    console.log(req.body);
+    console.log(req.user);
+
     const exportLog = await ExportLog.create({
       exportedBy: req.user._id,
       company: req.user.company,
       exportType: "applications",
-      filters: {
-        status,
-        jobId,
-        minScore,
-        dateFrom,
-        dateTo,
-      },
-      status: "queued",
+      filters: { status, jobId, minScore, dateFrom, dateTo },
+      status: "processing",
       requestedAt: new Date(),
     });
 
-    // 2. Call n8n webhook
-    const payload = {
-      exportId: exportLog._id,
-      company: req.user.company,
-      exportType: "applications",
-      filters: exportLog.filters,
-    };
-
-    await axios.post(process.env.N8N_WEBHOOK_URL, payload);
-
-    // 3. Response immediately
-    return res.status(200).json({
-      success: true,
-      message: "Export started",
-      exportId: exportLog._id,
-    });
-
-  } catch (error) {
-    console.error("Export Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Failed to start export",
-    });
-  }
-};
-
-
-/**
- * @route   POST /api/export/webhook
- * @desc    n8n sends result here
- */
-export const exportWebhook = async (req, res) => {
-  try {
-    const {
-      exportId,
-      fileUrl,
-      totalRecords,
-      executionId,
-      status,
-      error,
-    } = req.body;
-
-    const exportLog = await ExportLog.findById(exportId);
-
-    if (!exportLog) {
-      return res.status(404).json({ message: "Export not found" });
-    }
-
-    exportLog.status = status || "completed";
-    exportLog.fileUrl = fileUrl;
-    exportLog.totalRecords = totalRecords;
-    exportLog.executionId = executionId;
-    exportLog.completedAt = new Date();
-
-    if (error) {
-      exportLog.status = "failed";
-      exportLog.error = error;
-    }
-
-    await exportLog.save();
-
-    return res.status(200).json({
-      success: true,
-      message: "Export updated",
-    });
-
-  } catch (error) {
-    console.error("Webhook Error:", error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Webhook failed",
-    });
-  }
-};
-
-export const getExportData = async (req, res) => {
-  try {
-    const { type } = req.params;
-    const { status, jobId, minScore, dateFrom, dateTo } = req.query;
-
+    // 1. Build query
     let filters = { company: req.user.company };
 
     if (status) filters.status = status;
@@ -122,33 +33,134 @@ export const getExportData = async (req, res) => {
       if (dateTo) filters.createdAt.$lte = new Date(dateTo);
     }
 
-    let data = [];
+    // 2. Fetch data
+    const data = await Application.find(filters)
+      .populate("job", "title")
+      .populate("candidate", "name email")
+      .lean();
+    console.log("Export data:", data);
+    console.log("Data length:", data.length);
 
-    if (type === "applications") {
-      data = await Application.find(filters)
-        .populate("job", "title")
-        .populate("candidate", "name email")
-        .lean();
+    // 3. Transform data for CSV export
+    const transformedData = data.map(app => ({
+      candidateName: app.candidate?.name || "N/A",
+      candidateEmail: app.candidate?.email || "N/A",
+      jobTitle: app.job?.title || "N/A",
+      status: app.status || "N/A",
+      score: app.score || 0,
+      appliedDate: app.createdAt ? new Date(app.createdAt).toLocaleDateString() : "N/A"
+    }));
+
+    console.log("Transformed data:", transformedData);
+
+    // Check if transformed data is empty
+    if (transformedData.length === 0) {
+      exportLog.status = "completed";
+      exportLog.totalRecords = 0;
+      exportLog.completedAt = new Date();
+      await exportLog.save();
+
+      return res.json({
+        success: true,
+        exportId: exportLog._id,
+        fileUrl: null,
+        totalRecords: 0,
+        message: "No applications found matching your filters"
+      });
     }
 
-    if (type === "jobs") {
-      data = await Job.find({ company: req.user.company }).lean();
+    // 3. Convert to CSV with field definitions
+    const fields = ["candidateName", "candidateEmail", "jobTitle", "status", "score", "appliedDate"];
+    const parser = new Parser({ fields });
+    
+    let csv;
+    try {
+      csv = parser.parse(transformedData);
+    } catch (parseError) {
+      console.error("CSV Parse Error:", parseError);
+      exportLog.status = "failed";
+      exportLog.completedAt = new Date();
+      await exportLog.save();
+      
+      return res.status(400).json({
+        success: false,
+        message: "Failed to convert data to CSV"
+      });
     }
 
-    if (type === "interviews") {
-      data = await Interview.find({ company: req.user.company }).lean();
+    // 4. Ensure uploads directory exists
+    if (!fs.existsSync("uploads")) {
+      fs.mkdirSync("uploads", { recursive: true });
     }
+
+    // 5. Save file locally
+    const fileName = `export_${Date.now()}.csv`;
+    const filePath = path.join("uploads", fileName);
+
+    try {
+      fs.writeFileSync(filePath, csv, { encoding: "utf-8" });
+    } catch (writeError) {
+      console.error("File Write Error:", writeError);
+      exportLog.status = "failed";
+      exportLog.completedAt = new Date();
+      await exportLog.save();
+      
+      return res.status(500).json({
+        success: false,
+        message: "Failed to save export file"
+      });
+    }
+
+    // 6. Update ExportLog
+    exportLog.status = "completed";
+    exportLog.fileUrl = `/uploads/${fileName}`;
+    exportLog.totalRecords = data.length;
+    exportLog.completedAt = new Date();
+
+    await exportLog.save();
 
     return res.json({
       success: true,
-      data
+      exportId: exportLog._id,
+      fileUrl: exportLog.fileUrl,
+      totalRecords: data.length
     });
 
   } catch (error) {
-    console.log(error);
+    console.error(error);
     return res.status(500).json({
       success: false,
-      message: "Failed to fetch export data"
+      message: "Export failed"
     });
   }
+};
+
+export const getExportHistory = async (req, res) => {
+  try {
+    console.log("Fetching export history for company:", req.user.company);
+    const exports = await ExportLog.find({
+      company: req.user.company
+    }).sort({ createdAt: -1 });
+
+    console.log("Found exports:", exports.length);
+    console.log("Exports:", exports);
+
+    return res.json({
+      success: true,
+      data: exports
+    });
+
+  } catch (error) {
+    console.error("Error fetching export history:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch export history"
+    });
+  }
+};
+
+export const downloadExport = (req, res) => {
+  const filePath = `uploads/${req.params.file}`;
+
+  return res.download(filePath);
 };

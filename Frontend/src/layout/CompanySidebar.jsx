@@ -37,6 +37,7 @@ export default function CompanySidebar({ open, onClose }) {
   ];
 
   if (isCompanyAdmin) {
+    menu.push({ name: "Export Data", path: "/company/export" });
     menu.push({ name: "Team Management", path: "/company/team" });
     menu.push({ name: "Settings", path: "/company/settings" });
   }

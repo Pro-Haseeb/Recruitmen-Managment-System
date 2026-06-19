@@ -29,7 +29,7 @@ import { Link } from "react-router-dom";
 
 import { getAllJobs } from "../../services/CandidateApi";
 import { getCompanyApplications } from "../../services/ApplicationApi";
-import { getHRs, getExportStats, getActivityStats } from "../../services/CompanyApi";
+import { getHRs, getActivityStats } from "../../services/CompanyApi";
 import DetailOverlay, { OverlayField, OverlayBadge, OverlaySection } from "../../components/shared/DetailOverlay";
 
 function GlassCard({ children, sx = {} }) {
@@ -85,9 +85,6 @@ export default function CompanyDashboard() {
             return { data: [] };
           })
         ]);
-
-        // Load export stats
-        getExportStats().then(res => setExportStats(res.data)).catch(() => setExportStats(null));
 
         // Load activity stats (only for company admin)
         if (userData?.role === "company_admin") {

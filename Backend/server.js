@@ -12,14 +12,15 @@ import userRoutes from "./routes/systemadmin/userRoutes.js";
 
 //....... company_admin
 import teamRoutes from "./routes/companyadmin/teamRoutes.js";
-// import exportActivityRoutes from "./routes/companyadmin/exportActivityRoutes.js";
-
+import exportActivityRoutes from "./routes/companyadmin/exportActivityRoutes.js";
+import interviewRoutes from "./routes/companyadmin/interviewRoutes.js"
 //....... HR
 import jobRoutes from "./routes/companyadmin/jobRoutes.js";
 import detailJobRoute from "./routes/candidate/detailJobRoute.js";
 
 //......... candidate
 import applicationRoutes from "./routes/candidate/applicationRoute.js";
+import candidateInterviewRoutes from "./routes/candidate/interviewRoutes.js";
 dotenv.config();
 connectDB();
 
@@ -46,12 +47,14 @@ app.use("/api/system/users", userRoutes);
 
 // ........ company_admin
 app.use("/api/company", teamRoutes);
-// app.use("/api/company", exportActivityRoutes);
+app.use("/api/company", exportActivityRoutes);
 app.use("/api/jobs", jobRoutes);
 app.use("/api/jobs", detailJobRoute);
+app.use("/api/interview", interviewRoutes);
 
 //........ candidate
-app.use("/api/application", applicationRoutes)
+app.use("/api/application", applicationRoutes);
+app.use("/api/candidate/interviews", candidateInterviewRoutes);
 
 const PORT = process.env.PORT || 5000;
 

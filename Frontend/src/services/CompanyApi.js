@@ -12,14 +12,21 @@ export const updateJobCriteria = (jobId, criteriaWeights) =>
     API.put(`/jobs/${jobId}/criteria`, { criteriaWeights });
 
 // Export APIs
-export const exportApplications = (applicationIds) =>
-    API.post("/company/export", { applicationIds });
+export const exportApplications = (filters) =>
+    API.post("/company/export/applications", filters);
 
 export const getExportHistory = () =>
     API.get("/company/export/history");
 
-export const getExportStats = () =>
-    API.get("/company/export/stats");
+export const downloadExportFile = async (fileName) => {
+    const axiosInstance = API;
+    axiosInstance.defaults.responseType = "blob";
+    try {
+        return await axiosInstance.post("/company/export/download", { file: fileName });
+    } finally {
+        axiosInstance.defaults.responseType = "json";
+    }
+};
 
 // Activity Log APIs
 export const logActivity = (action, entityType, entityId, details) =>
@@ -30,3 +37,21 @@ export const getCompanyActivityLogs = () =>
 
 export const getActivityStats = () =>
     API.get("/company/activity/stats");
+
+
+//Interview APIS
+export const getInterviewers = () =>
+    API.get("/interview/interviewers");
+
+export const scheduleInterview = (applicationId, interviewer, interviewDate, interviewType)=>API.post("/interview/schedule", {
+    applicationId, interviewer, interviewDate, interviewType
+})
+
+export const getInterview = () =>
+    API.get("/interview");
+
+export const updateInterview = (interviewId, feedback, result) =>
+    API.put(`/interview/${interviewId}`, {feedback, result});
+
+export const deleteInterview = (interviewId) =>
+    API.delete(`/interview/${interviewId}`);

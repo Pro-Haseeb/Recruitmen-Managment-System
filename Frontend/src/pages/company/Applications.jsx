@@ -34,6 +34,8 @@ import {
 import { getCompanyApplications, getJobRanking, updateApplicationStatus } from "../../services/ApplicationApi.js";
 import DetailOverlay, { OverlayField, OverlayBadge, OverlaySection } from "../../components/shared/DetailOverlay";
 import Pagination from "../../components/shared/Pagination";
+import ScheduleInterviewModal from "../../components/modals/ScheduleInterviewModal";
+import { Schedule as ScheduleIcon } from "@mui/icons-material";
 
 const PER_PAGE = 5;
 
@@ -130,6 +132,7 @@ export default function Applications() {
   const [filter, setFilter] = useState("all");
   const [rankings, setRankings] = useState([]);
   const [loadingRankings, setLoadingRankings] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   
   // Toast notifications state
   const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
@@ -665,6 +668,7 @@ export default function Applications() {
               justifyContent: "flex-end",
               backdropFilter: "blur(10px)",
               zIndex: 100,
+              flexWrap: "wrap",
             }}>
               <Button
                 variant="outlined"
@@ -681,11 +685,37 @@ export default function Applications() {
                   "&:hover": {
                     bgcolor: "rgba(239,68,68,0.08)",
                     borderColor: "#ef4444",
+                  },
+                  "&.Mui-disabled": {
+                    borderColor: "rgba(239,68,68,0.1)",
+                    color: "rgba(239,68,68,0.5)"
                   }
                 }}
               >
-                Reject Applicant
+                Reject
               </Button>
+              
+              {selectedApp.status === "shortlisted" && (
+                <Button
+                  variant="outlined"
+                  startIcon={<ScheduleIcon />}
+                  onClick={() => setShowScheduleModal(true)}
+                  sx={{
+                    borderRadius: "10px",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    borderColor: "rgba(96,165,250,0.2)",
+                    color: "#60a5fa",
+                    "&:hover": {
+                      bgcolor: "rgba(96,165,250,0.08)",
+                      borderColor: "#3b82f6",
+                    }
+                  }}
+                >
+                  Schedule Interview
+                </Button>
+              )}
+              
               <Button
                 variant="contained"
                 startIcon={<CheckCircleIcon />}
@@ -699,16 +729,37 @@ export default function Applications() {
                   boxShadow: "0 4px 12px rgba(16,185,129,0.2)",
                   "&:hover": {
                     background: "linear-gradient(90deg, #059669, #047857)",
+                  },
+                  "&.Mui-disabled": {
+                    background: "rgba(16,185,129,0.3)",
+                    color: "rgba(255,255,255,0.5)"
                   }
                 }}
               >
-                Shortlist Applicant
+                Shortlist
               </Button>
             </Box>
 
           </Box>
         )}
       </DetailOverlay>
+
+      {/* SCHEDULE INTERVIEW MODAL */}
+      <ScheduleInterviewModal
+        open={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        application={selectedApp}
+        onSuccess={() => {
+          setShowScheduleModal(false);
+          setToast({
+            open: true,
+            message: "Interview scheduled successfully!",
+            severity: "success",
+          });
+          // Refresh data
+          fetchApplications();
+        }}
+      />
 
       {/* SNACKBAR / TOAST NOTIFICATION */}
       <Snackbar

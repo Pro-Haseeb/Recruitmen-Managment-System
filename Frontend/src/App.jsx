@@ -29,6 +29,7 @@ import CompanyDashboard from './pages/company/Dashboard';
 import AllJobs from './pages/company/AllJobs';
 import CreateJob from './pages/company/CreateJob';
 import Applications from './pages/company/Applications';
+import Export from './pages/company/Export';
 import TeamManagement from './pages/company/TeamManagement';
 import CompanySettings from './pages/company/Settings';
 import CompanyInterviews from './pages/company/Interviews';
@@ -38,6 +39,7 @@ import CandidateLayout from './layout/CandidateLayout';
 import CandidateDashboard from './pages/candidate/Dashboard';
 import AppliedJobs from './pages/candidate/AppliedJobs';
 import CandidateProfile from './pages/candidate/Profile';
+import CandidateInterviews from './pages/candidate/Interviews';
 import CandidateNotifications from './pages/candidate/Notifications';
 import JobDetails from './pages/candidate/JobsDetails';
 
@@ -66,6 +68,7 @@ const App = () => {
 
           {/* Admin Only within Company */}
           <Route element={<ProtectedRoute allowedRoles={['company_admin']} />}>
+            <Route path="export" element={<Export />} />
             <Route path="team" element={<TeamManagement />} />
             <Route path="settings" element={<CompanySettings />} />
           </Route>
@@ -77,6 +80,7 @@ const App = () => {
         <Route path="/candidate" element={<CandidateLayout />}>
           <Route index element={<CandidateDashboard />} />
           <Route path="applied" element={<AppliedJobs />} />
+          <Route path="interviews" element={<CandidateInterviews />} />
           <Route path="profile" element={<CandidateProfile />} />
           <Route path="notifications" element={<CandidateNotifications />} />
         </Route>

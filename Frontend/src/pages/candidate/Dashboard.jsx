@@ -1,8 +1,30 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Grid, LinearProgress, Chip, Avatar, Skeleton } from "@mui/material";
-import { Work, CheckCircle, Description, AccessTime } from "@mui/icons-material";
+import {
+  Box,
+  Typography,
+  Grid,
+  LinearProgress,
+  Chip,
+  Avatar,
+  Skeleton,
+  Button,
+} from "@mui/material";
+import {
+  Work,
+  CheckCircle,
+  Description,
+  AccessTime,
+  VideoCall as VideoCallIcon,
+  ArrowForward as ArrowForwardIcon,
+} from "@mui/icons-material";
 import { motion } from "framer-motion";
-import { getAllJobs } from "../../services/CandidateApi.js";
+import { useNavigate } from "react-router-dom";
+import { getAllJobs, getMyInterviews } from "../../services/CandidateApi.js";
+import {
+  getInterviewStatus,
+  formatInterviewDate,
+  formatInterviewTime,
+} from "../../utils/interviewUtils";
 
 function GlassCard({ children, sx = {} }) {
   return (
@@ -19,7 +41,7 @@ function GlassCard({ children, sx = {} }) {
           transform: "translateY(-5px)",
           boxShadow: "0 15px 40px rgba(0,0,0,0.3)",
         },
-        ...sx
+        ...sx,
       }}
     >
       {children}
@@ -28,7 +50,9 @@ function GlassCard({ children, sx = {} }) {
 }
 
 export default function CandidateDashboard() {
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState([]);
+  const [interviews, setInterviews] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const user = JSON.parse(localStorage.getItem("user") || "{}");
@@ -36,51 +60,46 @@ export default function CandidateDashboard() {
   const storageKey = `appliedJobs_${candidateId}`;
 
   useEffect(() => {
-    const fetchAppliedJobs = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
-        const res = await getAllJobs();
-        const allJobs = Array.isArray(res.data) ? res.data : [];
+        const [jobsRes, interviewsRes] = await Promise.all([
+          getAllJobs().catch(() => ({ data: [] })),
+          getMyInterviews().catch(() => ({ data: { data: [] } })),
+        ]);
 
-        // Filter to only show jobs applied to by this specific candidate
+        const allJobs = Array.isArray(jobsRes.data) ? jobsRes.data : [];
         const appliedList = JSON.parse(localStorage.getItem(storageKey) || "[]");
-        const userAppliedJobs = allJobs.filter(job => appliedList.includes(job._id));
+        const userAppliedJobs = allJobs.filter((job) => appliedList.includes(job._id));
 
-        // Map them exactly like AppliedJobs page for consistency
         const mapped = userAppliedJobs.map((job, index) => {
           const statuses = ["Applied", "Shortlisted", "Under Review", "Rejected"];
           const colors = ["#3b82f6", "#10b981", "#f59e0b", "#ef4444"];
           const statusIdx = index % statuses.length;
-          const status = statuses[statusIdx];
-          const color = colors[statusIdx];
-          const dateDiff = (index * 2) + 1;
-          const dateLabel = dateDiff === 1 ? "1 day ago" : `${dateDiff} days ago`;
-
           return {
             ...job,
-            appStatus: status,
-            appColor: color,
-            appDate: dateLabel,
+            appStatus: statuses[statusIdx],
+            appColor: colors[statusIdx],
+            appDate: `${(index * 2) + 1} day${index * 2 === 0 ? "" : "s"} ago`,
           };
         });
 
         setJobs(mapped);
+        setInterviews(interviewsRes.data?.data || []);
       } catch (error) {
-        console.error("Error loading candidate dashboard stats:", error);
+        console.error("Error loading candidate dashboard:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchAppliedJobs();
+    fetchData();
   }, [storageKey]);
 
-  // Calculate live statistics
   const appliedCount = jobs.length;
-  const shortlistedCount = jobs.filter(j => j.appStatus === "Shortlisted").length;
-  const underReviewCount = jobs.filter(j => j.appStatus === "Under Review").length;
-  
-  // Dynamic profile completion calculation (e.g. check standard keys present)
-  let profileCompletion = 40; // baseline
+  const shortlistedCount = jobs.filter((j) => j.appStatus === "Shortlisted").length;
+  const interviewCount = interviews.length;
+
+  let profileCompletion = 40;
   if (user.name) profileCompletion += 15;
   if (user.email) profileCompletion += 15;
   if (user.role) profileCompletion += 15;
@@ -89,17 +108,23 @@ export default function CandidateDashboard() {
   const stats = [
     { title: "Applied Jobs", value: appliedCount.toString(), icon: <Work />, color: "#3b82f6" },
     { title: "Shortlisted", value: shortlistedCount.toString(), icon: <CheckCircle />, color: "#10b981" },
-    { title: "Interviews Scheduled", value: underReviewCount.toString(), icon: <AccessTime />, color: "#f59e0b" },
-    { title: "Profile Score", value: `${profileCompletion}%`, icon: <Description />, color: "#8b5cf6" }
+    { title: "Interviews Scheduled", value: interviewCount.toString(), icon: <AccessTime />, color: "#f59e0b" },
+    { title: "Profile Score", value: `${profileCompletion}%`, icon: <Description />, color: "#8b5cf6" },
   ];
 
-  // First 3 dynamic items for recent activity
-  const recentActivity = jobs.slice(0, 3).map(j => ({
+  const recentActivity = jobs.slice(0, 3).map((j) => ({
     title: `${j.title} at ${j.company?.name || j.company || "Enterprise Partner"}`,
     status: j.appStatus,
     date: j.appDate,
-    color: j.appColor
+    color: j.appColor,
   }));
+
+  const upcomingInterviews = interviews
+    .filter((iv) => {
+      const status = getInterviewStatus(iv);
+      return status === "scheduled" || status === "active";
+    })
+    .slice(0, 3);
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -127,7 +152,10 @@ export default function CandidateDashboard() {
           <Grid container spacing={3}>
             {stats.map((stat, i) => (
               <Grid item xs={12} sm={6} md={3} key={i}>
-                <GlassCard>
+                <GlassCard
+                  sx={{ cursor: stat.title === "Interviews Scheduled" ? "pointer" : "default" }}
+                  onClick={stat.title === "Interviews Scheduled" ? () => navigate("/candidate/interviews") : undefined}
+                >
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
                     <Avatar sx={{ bgcolor: `${stat.color}20`, color: stat.color }}>
                       {stat.icon}
@@ -147,7 +175,68 @@ export default function CandidateDashboard() {
 
         <Grid container spacing={4} sx={{ mt: 1 }}>
           <Grid item xs={12} md={8}>
-            <GlassCard sx={{ height: "100%" }}>
+            {upcomingInterviews.length > 0 && (
+              <GlassCard sx={{ mb: 3 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+                  <Typography variant="h6" fontWeight="700">
+                    Upcoming Interviews
+                  </Typography>
+                  <Button
+                    size="small"
+                    endIcon={<ArrowForwardIcon />}
+                    onClick={() => navigate("/candidate/interviews")}
+                    sx={{ textTransform: "none", color: "#a855f7" }}
+                  >
+                    View All
+                  </Button>
+                </Box>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {upcomingInterviews.map((iv) => (
+                    <Box
+                      key={iv._id}
+                      sx={{
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: "rgba(168,85,247,0.06)",
+                        border: "1px solid rgba(168,85,247,0.15)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexWrap: "wrap",
+                        gap: 2,
+                      }}
+                    >
+                      <Box>
+                        <Typography fontWeight="700">{iv.job?.title}</Typography>
+                        <Typography variant="body2" sx={{ color: "#94a3b8" }}>
+                          {iv.company?.name} · {formatInterviewDate(iv.interviewDate)} at {formatInterviewTime(iv.interviewDate)}
+                        </Typography>
+                      </Box>
+                      {iv.meetingLink && iv.interviewType === "online" && (
+                        <Button
+                          variant="contained"
+                          size="small"
+                          startIcon={<VideoCallIcon />}
+                          href={iv.meetingLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          sx={{
+                            background: "linear-gradient(135deg, #a855f7, #3b82f6)",
+                            textTransform: "none",
+                            fontWeight: 700,
+                            borderRadius: "8px",
+                          }}
+                        >
+                          Join Meeting
+                        </Button>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              </GlassCard>
+            )}
+
+            <GlassCard sx={{ height: upcomingInterviews.length > 0 ? "auto" : "100%" }}>
               <Typography variant="h6" fontWeight="700" sx={{ mb: 3 }}>
                 Recent Applications
               </Typography>
@@ -160,12 +249,23 @@ export default function CandidateDashboard() {
                 </Box>
               ) : recentActivity.length === 0 ? (
                 <Box sx={{ p: 4, textAlign: "center", color: "#64748b" }}>
-                  <Typography>No applications recorded yet. Start viewing positionsspec and apply!</Typography>
+                  <Typography>No applications recorded yet. Start viewing positions and apply!</Typography>
                 </Box>
               ) : (
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                   {recentActivity.map((app, i) => (
-                    <Box key={i} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", p: 2, borderRadius: 2, bgcolor: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)" }}>
+                    <Box
+                      key={i}
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        p: 2,
+                        borderRadius: 2,
+                        bgcolor: "rgba(255,255,255,0.02)",
+                        border: "1px solid rgba(255,255,255,0.05)",
+                      }}
+                    >
                       <Box>
                         <Typography fontWeight="600">{app.title}</Typography>
                         <Typography variant="body2" sx={{ color: "#94a3b8" }}>{app.date}</Typography>
@@ -186,7 +286,7 @@ export default function CandidateDashboard() {
               <Typography sx={{ color: "#94a3b8", mb: 3 }}>
                 Complete your profile details to increase your visibility to premium partner recruiters.
               </Typography>
-              
+
               <Box sx={{ mb: 1, display: "flex", justifyContent: "space-between" }}>
                 <Typography fontWeight="600">{profileCompletion}%</Typography>
                 <Typography variant="body2" sx={{ color: "#8b5cf6" }}>
@@ -202,8 +302,8 @@ export default function CandidateDashboard() {
                   bgcolor: "rgba(255,255,255,0.05)",
                   "& .MuiLinearProgress-bar": {
                     borderRadius: 5,
-                    background: "linear-gradient(90deg, #c084fc, #a855f7)"
-                  }
+                    background: "linear-gradient(90deg, #c084fc, #a855f7)",
+                  },
                 }}
               />
             </GlassCard>

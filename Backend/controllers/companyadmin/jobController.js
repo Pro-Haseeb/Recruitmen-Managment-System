@@ -60,7 +60,10 @@ export const createJob = async (req, res) => {
 
 export const getAllJobs = async (req, res) => {
   try {
-    const jobs = await Job.find()
+    const jobs = await Job.find({
+      deadline: { $gt: new Date() },
+      status: "open"
+    })
       .populate("company", "name")
       .populate("createdBy", "name email");
 

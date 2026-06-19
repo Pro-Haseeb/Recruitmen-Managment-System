@@ -5,3 +5,6 @@ export const getAllJobs = () =>
 
 export const getSingleJob = (id) =>
   API.get(`/jobs/${id}`);
+
+export const getMyInterviews = () =>
+  API.get("/candidate/interviews");

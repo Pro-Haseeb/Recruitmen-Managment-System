@@ -18,15 +18,8 @@ const exportLogSchema = new mongoose.Schema({
     required: true
   },
 
-  // 🔥 n8n workflow tracking
-  workflowId: {
-    type: String,
-    required: true
-  },
-
-  executionId: {
-    type: String
-  },
+ 
+ 
 
   status: {
     type: String,
